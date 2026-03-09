@@ -1,0 +1,8 @@
+.env
+.venv
+poetry.lock
+venv/
+
+
+signature.xml
+nf.xml
