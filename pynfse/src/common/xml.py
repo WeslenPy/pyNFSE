@@ -1,109 +1,95 @@
-from abc import abstractmethod
-from jinja2 import Environment, PackageLoader
+from abc import ABC, abstractmethod
 from pathlib import Path
-
 from typing import Optional
-from pynfse.schemas.nfse import InfoRPS
-from pynfse.schemas.rps import CancelNFSE, ConsultNFSE
-from pynfse.schemas.lote import LoteRps
-from bs4 import BeautifulSoup
 from loguru import logger
 import re
-
+from bs4 import BeautifulSoup
 from functools import wraps
+from lxml import etree
 
 
 class XMLParser:
+    """Helper para processamento e limpeza de XML."""
 
     def parse(func):
         @wraps(func)
-        def wrapper(*args,**kwargs):
-            result=  func(*args,**kwargs)
-
-            if isinstance(result,str):
-                return XMLParser.parse_xml_nfse(result)  # type: ignore
-
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            if isinstance(result, str):
+                return XMLParser.parse_xml_nfse(result)
             return result
-
         return wrapper
 
     @staticmethod
-    def parse_xml_nfse(xml_nfse: str)->str:
+    def parse_xml_nfse(xml_nfse: str) -> str:
         """
-        Parse and clean XML NFSE, preserving CDATA sections.
-        
-        The template already includes CDATA sections, so we need to preserve
-        them when processing the XML. This method ensures CDATA content is
-        not escaped when the XML is processed.
+        Limpa o XML preservando seções CDATA.
         """
-        logger.debug("Parse de XML NFSE")
+        logger.debug("Processando XML NFSE")
         
-        # Check if XML already has proper CDATA sections
-        # If so, we can skip processing to avoid escaping issues
         has_cdata = '<![CDATA[' in xml_nfse
         
         if has_cdata:
-            # XML already has CDATA, just clean up whitespace and return
-            # Remove extra newlines but preserve structure
+            # Remove quebras de linha extras mas preserva estrutura
             xml_nfse = xml_nfse.replace("\n", '')
-            # Fix any spacing issues around CDATA
+            # Ajusta espaços ao redor de CDATA
             xml_nfse = re.sub(r'\s*<!\[CDATA\[', '<![CDATA[', xml_nfse)
             xml_nfse = re.sub(r'\]\]>\s*', ']]>', xml_nfse)
-            print(xml_nfse)
             return xml_nfse
         
-        # If no CDATA, process normally (for backward compatibility)
+        # Se não tiver CDATA, usa BeautifulSoup para formatar
         xml_nfse = xml_nfse.replace("\n", '')
         soup = BeautifulSoup(xml_nfse, 'lxml-xml')
-        xml = str(soup)
-        print(xml)
-        return xml
+        return str(soup)
 
 
-class XMLBase:
+class XMLBase(ABC):
+    """
+    Classe base para geração de XML.
+    Refatorada para não usar Jinja2, priorizando modelos Pydantic.
+    """
 
-    def __init__(self,templates:Path):
-        self.templates = templates 
+    def __init__(self, templates: Optional[Path] = None):
+        self.templates = templates
 
-        print(self.templates.as_posix())
-
-        self.env = Environment(loader=PackageLoader(package_name=__name__,
-                                    package_path=self.templates ),
-                                    autoescape=False)
-
-
-        self.base = self.env.get_template('base.xml')
-
-        self.rps = self.env.get_template('rps.xml')
-        self.cancel_nfse = self.env.get_template('cancel.xml')
-        self.consult_nfse = self.env.get_template('consult.xml')
-        self.lote_rps = self.env.get_template('lote_rps.xml')
-
- 
-    def create_base(self,soap_body: str)->str:
-        """Create the Base XML"""
-        return self.base.render(soap_body=soap_body)
-
-    @abstractmethod
-    # @XMLParser.parse
-    def create_rps_nfse(self, lote: LoteRps) -> str:
+    def create_soap_envelope(self, body_content: str, method_name: str, header_content: Optional[str] = None) -> str:
         """
-        Create the RPS XML.
-        
-        Se lote for fornecido, cria XML com estrutura LoteRps conforme NFS-e Nacional.
-        Caso contrário, cria XML simples com apenas o RPS.
+        Cria um envelope SOAP 1.1 genérico com CDATA para o padrão ABRASF/SpeedGov.
         """
-        # Usa estrutura com LoteRps conforme documentação NFS-e Nacional
-        xml_body = self.lote_rps.render(lote=lote)
-        xml_created = self.create_base(soap_body=xml_body)
+        # Namespaces padrão
+        soap_env = "http://schemas.xmlsoap.org/soap/envelope/"
+        nfse_ns = "http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd"
         
-        print(xml_created)
-        return xml_created
+        envelope = etree.Element(f"{{{soap_env}}}Envelope", nsmap={
+            'soapenv': soap_env,
+            'nfse': nfse_ns
+        })
+        
+        etree.SubElement(envelope, f"{{{soap_env}}}Header")
+        body = etree.SubElement(envelope, f"{{{soap_env}}}Body")
+        
+        method = etree.SubElement(body, f"{{{nfse_ns}}}{method_name}")
+        
+        if header_content:
+            header_tag = etree.SubElement(method, "header")
+            header_tag.text = etree.CDATA(header_content)
+            
+        parameters_tag = etree.SubElement(method, "parameters")
+        parameters_tag.text = etree.CDATA(body_content)
+        
+        return etree.tostring(envelope, encoding="UTF-8", xml_declaration=True, pretty_print=True).decode("utf-8")
 
     @abstractmethod
-    def create_cancel_nfse(self,nfse: CancelNFSE)->str:
-        """Create the Cancel NFSE XML"""
+    def create_rps_nfse(self, lote) -> str:
+        """Deve ser implementado pelo provedor específico."""
+        pass
 
     @abstractmethod
-    def create_consult_nfse(self,nfse: ConsultNFSE)->str:
-        """Create the Consult NFSE XML"""
+    def create_cancel_nfse(self, nfse) -> str:
+        """Deve ser implementado pelo provedor específico."""
+        pass
+
+    @abstractmethod
+    def create_consult_nfse(self, nfse) -> str:
+        """Deve ser implementado pelo provedor específico."""
+        pass

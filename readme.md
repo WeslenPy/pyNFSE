@@ -1,177 +1,94 @@
-# pyNFSE
+# pyNFSE - Integração com NFSe (Nota Fiscal de Serviço Eletrônica)
 
-Biblioteca Python para geração e gerenciamento de Nota Fiscal de Serviços Eletrônica (NFSE).
+Biblioteca Python para geração, assinatura e comunicação com Web Services de Nota Fiscal de Serviço Eletrônica (NFSe), com foco inicial no padrão ABRASF v1 (Provedor Carnaubal/SpeedGov).
 
-## Características
+## 🚀 Características
 
-- ✅ Modelos Pydantic para validação de dados
-- ✅ Suporte para criação de NFSE, cancelamento e consultas
-- ✅ Estrutura extensível para diferentes municípios
-- ✅ Testes completos com pytest
-- ✅ Documentação e exemplos práticos
+- **Modelagem com Pydantic**: Estruturas XML definidas como classes Python fortemente tipadas, garantindo validação de dados antes mesmo da geração do XML.
+- **Assinatura Digital Integrada**: Suporte a certificados PEM e PFX (PKCS#12) com assinatura XMLDSIG (SHA256) automática.
+- **Envelope SOAP Genérico**: Geração dinâmica de envelopes SOAP 1.1 com suporte a seções CDATA, conforme exigido por muitos órgãos governamentais.
+- **Parser Inteligente**: Conversão automática de respostas XML/SOAP para dicionários Python ou modelos Pydantic, removendo namespaces e envelopes desnecessários.
+- **Cache de Recursos**: Sistema de cache em memória para certificados e arquivos XML remotos.
 
-## Instalação
+## 🛠️ Tecnologias Utilizadas
 
-```bash
-# Usando Poetry (recomendado)
-poetry install
+- [Python 3.11+](https://www.python.org/)
+- [Pydantic v2](https://docs.pydantic.dev/) para modelagem e validação.
+- [lxml](https://lxml.de/) para manipulação performática de XML.
+- [signxml](https://github.com/XML-Security/signxml) para assinaturas digitais.
+- [cryptography](https://cryptography.io/) para tratamento de certificados.
+- [xmltodict](https://github.com/martinblech/xmltodict) para conversão XML -> Dict.
 
-# Ou usando pip
-pip install -e .
+## 📂 Estrutura do Projeto
+
+```text
+pynfse/
+├── src/
+│   ├── common/                # Componentes genéricos (API base, XML, Assinatura)
+│   │   ├── api.py             # Classe base para provedores e parser de resposta
+│   │   ├── xml_node.py        # Base para serialização Pydantic -> XML
+│   │   └── signature.py       # Modelos para XML Digital Signature
+│   └── integration/
+│       └── carnaubal/         # Implementação específica (Provedor Carnaubal)
+│           └── abrasf/
+│               ├── models/    # Modelos Pydantic (RPS, Lote, Respostas)
+│               └── nfse.py    # Classe principal do provedor
+└── tests/                     # Suíte de testes unitários e de integração
 ```
 
-## Uso Rápido
+## 💻 Como Usar
+
+### 1. Configuração do Provedor
 
 ```python
-from datetime import date
-from pynfse.schemas.nfse import (
-    InfoRPS,
-    IdentificationNFSE,
-    ValuesNFSE,
-    ProviderNFSE,
-    ServicesNFSE,
-    IdentificationCostumerNFSE,
-    AddressNFSE,
-    CostumerNFSE,
-)
+from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
 
-# Criar valores
-valores = ValuesNFSE(
-    value_services=1000.00,
-    value_iss=50.00,
-    base_calculation=1000.00,
-    aliquot=5.0,
-    liquid_value=950.00
-)
-
-# Criar NFSE
-nfse = InfoRPS(
-    identification=IdentificationNFSE(number=1, serie="A"),
-    costumer=CostumerNFSE(
-        identification=IdentificationCostumerNFSE(cpf_cnpj="12345678901"),
-        social_name="Cliente Exemplo",
-        address=AddressNFSE(
-            address="Rua Exemplo",
-            number="123",
-            district="Centro",
-            uf="RN",
-            zip_code="59000000"
-        )
-    ),
-    services=ServicesNFSE(
-        description="Desenvolvimento de software",
-        code_municipio="2408102",
-        values=valores
-    ),
-    provider=ProviderNFSE(
-        cnpj="12345678000190",
-        municipal_registration=12345
-    ),
-    date=date.today()
-)
+# Inicializa o provedor com a URL do Web Service
+provider = CarnaubalNFSe(URL="https://homologacao.speedgov.com.br/carnaubal/ws")
 ```
 
-## Exemplos
+### 2. Geração e Assinatura de Lote RPS
 
-Consulte a pasta `examples/` para exemplos completos:
+```python
+from pynfse.src.integration.carnaubal.abrasf.models.rps import Rps, InfRps
+# ... importe outros modelos necessários (IdentificacaoRps, DadosServico, etc)
 
-- **Quick Start**: `examples/quick_start.py` - Exemplo mínimo para começar
-- **Uso Básico**: `examples/basic_usage.py` - Exemplos completos de uso
-- **Documentação**: `examples/README.md` - Guia detalhado dos exemplos
+# 1. Carrega o certificado (URL ou Local)
+cert_data = provider.get_certificate("caminho/para/certificado.pfx")
 
-### Executar Exemplos
+# 2. Cria os modelos de dados
+rps = Rps(inf_rps=InfRps(...))
+
+# 3. Gera a assinatura para o elemento
+lote_xml_element = lote_model.to_element()
+signature = provider.generate_signature(lote_xml_element, cert_data, password="senha")
+
+# 4. Atribui a assinatura e gera o XML final
+lote_model.signature = signature
+xml_final = lote_model.to_xml()
+```
+
+### 3. Processamento de Resposta
+
+```python
+from pynfse.src.integration.carnaubal.abrasf.models.respostas import EnviarLoteRpsResposta
+
+# Envia o XML e obtém a resposta bruta
+response_nfse = provider.send(xml_final)
+
+# Converte a resposta (limpando SOAP/Namespaces) para o modelo Pydantic
+resposta = provider.parse_response(response_nfse.text)
+# Agora você tem um dicionário limpo ou pode instanciar o modelo:
+resultado = EnviarLoteRpsResposta(**resposta)
+
+print(f"Protocolo recebido: {resultado.protocolo}")
+```
+
+## 🧪 Testes
+
+Para rodar a suíte de testes completa:
 
 ```bash
-# Quick Start
-poetry run python examples/quick_start.py
-
-# Exemplos completos
-poetry run python examples/basic_usage.py
+poetry run pytest -vv
 ```
-
-## Estrutura do Projeto
-
-```
-pynfse/
-├── schemas/          # Modelos Pydantic (NFSE, RPS)
-├── src/
-│   ├── common/      # Classes base (API, XML, Response)
-│   └── integration/ # Implementações específicas por município
-└── tests/           # Testes automatizados
-```
-
-## Funcionalidades
-
-### Schemas Disponíveis
-
-#### NFSE
-- `IdentificationNFSE` - Identificação do RPS
-- `ValuesNFSE` - Valores e impostos
-- `ProviderNFSE` - Dados do prestador
-- `ServicesNFSE` - Dados do serviço
-- `CostumerNFSE` - Dados do tomador
-- `InfoRPS` - Estrutura completa da NFSE
-
-#### RPS (Requisições)
-- `BaseNFSE` - Classe base para requisições
-- `CancelNFSE` - Cancelamento de NFSE
-- `ConsultNFSE` - Consulta de NFSE
-- `ConsultLoteNFSE` - Consulta de lote de NFSE
-- `ConsultLoteRPS` - Consulta de lote de RPS
-
-### Classes Principais
-
-- `NFSeBase` - Classe base para integração com serviços de NFSE
-- `XMLBase` - Classe base para geração de XML
-- `ResponseNFSE` - Wrapper para respostas da API
-
-## Testes
-
-Execute os testes com:
-
-```bash
-poetry run pytest tests/ -v
-```
-
-Todos os 57 testes devem passar com sucesso.
-
-## Documentação
-
-- **Testes**: Veja `tests/README.md` para documentação dos testes
-- **Exemplos**: Veja `examples/README.md` para guia de exemplos
-
-## Desenvolvimento
-
-### Pré-requisitos
-
-- Python 3.11+
-- Poetry
-
-### Instalação do Ambiente de Desenvolvimento
-
-```bash
-# Instalar dependências
-poetry install --with dev
-
-# Executar testes
-poetry run pytest tests/ -v
-```
-
-## Licença
-
-Este projeto está sob licença MIT.
-
-## Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## Autor
-
-weslenpy - weslenjhony@gmail.com
 
