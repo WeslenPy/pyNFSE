@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional, List, Annotated
 from pydantic import Field, StringConstraints
 from pynfse.src.integration.carnaubal.abrasf.models.base import (
@@ -7,7 +7,7 @@ from pynfse.src.integration.carnaubal.abrasf.models.base import (
     tsRazaoSocial, tsValor, tsItemListaServico, tsCodigoCnae,
     tsCodigoTributacao, tsDiscriminacao, tsCodigoMunicipioIbge,
     tsNaturezaOperacao, tsRegimeEspecialTributacao, tsStatus12,
-    tsUf, tsEmail
+    tsUf, tsEmail, tsAliquota
 )
 from pynfse.src.common.signature import Signature
 
@@ -49,6 +49,17 @@ class DadosTomador(ABRASFNode):
     endereco: Optional[Endereco] = Field(None, alias="Endereco")
     contato: Optional[Contato] = Field(None, alias="Contato")
 
+class DadosPrestador(ABRASFNode):
+    identificacao_prestador: IdentificacaoPrestador = Field(..., alias="IdentificacaoPrestador")
+    razao_social: tsRazaoSocial = Field(..., alias="RazaoSocial")
+    nome_fantasia: Optional[Annotated[str, StringConstraints(max_length=60)]] = Field(None, alias="NomeFantasia")
+    endereco: Endereco = Field(..., alias="Endereco")
+    contato: Optional[Contato] = Field(None, alias="Contato")
+
+class IdentificacaoOrgaoGerador(ABRASFNode):
+    codigo_municipio: tsCodigoMunicipioIbge = Field(..., alias="CodigoMunicipio")
+    uf: tsUf = Field(..., alias="Uf")
+
 class Valores(ABRASFNode):
     valor_servicos: tsValor = Field(..., alias="ValorServicos")
     valor_deducoes: Optional[tsValor] = Field(None, alias="ValorDeducoes")
@@ -62,7 +73,7 @@ class Valores(ABRASFNode):
     valor_iss_retido: Optional[tsValor] = Field(None, alias="ValorIssRetido")
     outras_retencoes: Optional[tsValor] = Field(None, alias="OutrasRetencoes")
     base_calculo: Optional[tsValor] = Field(None, alias="BaseCalculo")
-    aliquota: Optional[Annotated[float, Field(ge=0, le=1)]] = Field(None, alias="Aliquota")
+    aliquota: Optional[tsAliquota] = Field(None, alias="Aliquota")
     valor_liquido_nfse: Optional[tsValor] = Field(None, alias="ValorLiquidoNfse")
     desconto_condicionado: Optional[tsValor] = Field(None, alias="DescontoCondicionado")
     desconto_incondicionado: Optional[tsValor] = Field(None, alias="DescontoIncondicionado")
@@ -216,7 +227,7 @@ class InfRps(ABRASFNode):
     destinatario: Optional[Destinatario] = Field(None, alias="Destinatario")
     controle_ibscbs: Optional[ControleIBSCBS] = Field(None, alias="ControleIBSCBS")
     ibscbs: Optional[IBSCBS] = Field(None, alias="IBSCBS")
-    data_competencia: Optional[datetime] = Field(None, alias="DataCompetencia")
+    data_competencia: Optional[date] = Field(None, alias="DataCompetencia")
 
 class Rps(ABRASFNode):
     inf_rps: InfRps = Field(..., alias="InfRps")

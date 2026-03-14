@@ -2,6 +2,19 @@
 .venv
 venv/
 
-
+*.pyc
 signature.xml
 nf.xml
+*.pfx 
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.p7b
+*.p7c
+*.p7d
+*.p7e
+*.p7f
+*.p7g
+speedgov.py

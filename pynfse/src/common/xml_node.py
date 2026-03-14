@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 from lxml import etree
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, List, Optional, Set, Union
 from pydantic import BaseModel, ConfigDict
 
 
@@ -10,61 +10,95 @@ class XMLNode(BaseModel):
     Fornece funcionalidade para converter modelos Pydantic em elementos lxml.
     """
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+    xml_attribute_aliases: ClassVar[Set[str]] = set()
+    xml_inherit_namespace_for_children: ClassVar[bool] = False
 
-    def to_element(self, tag_name: Optional[str] = None) -> etree.Element:
+    @classmethod
+    def _is_xml_attribute(cls, xml_tag: str) -> bool:
+        return (
+            xml_tag in cls.xml_attribute_aliases
+            or xml_tag.lower() == "id"
+            or xml_tag.upper() == "URI"
+        )
+
+    @staticmethod
+    def _format_xml_value(value: Any) -> str:
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%dT%H:%M:%S")
+        if isinstance(value, date):
+            return value.isoformat()
+        return str(value)
+
+    @staticmethod
+    def _field_xml_namespace(field_info: Any, default_namespace: Optional[str]) -> Optional[str]:
+        extra = field_info.json_schema_extra or {}
+        if "xml_namespace" in extra:
+            return extra["xml_namespace"]
+        return default_namespace
+
+    def to_element(self, tag_name: Optional[str] = None, namespace: Optional[str] = None, nsmap: Optional[Dict[str, str]] = None) -> etree.Element:
         """
         Converte o modelo Pydantic em um elemento lxml.etree.Element.
         """
         if tag_name is None:
-            # Usa o nome da classe como nome da tag se não for fornecido
             tag_name = self.__class__.__name__
 
-        element = etree.Element(tag_name)
+        # O elemento atual pode ter namespace
+        full_tag_name = f"{{{namespace}}}{tag_name}" if namespace else tag_name
+        element = etree.Element(full_tag_name, nsmap=nsmap)
         
-        # Itera pelos campos do modelo
+        child_namespace = namespace if self.xml_inherit_namespace_for_children else None
+
         for field_name, field_info in self.__class__.model_fields.items():
             value = getattr(self, field_name)
-            
             if value is None:
                 continue
                 
-            # Usa o alias do campo se disponível (importante para nomes de tags XML com iniciais maiúsculas)
             xml_tag = field_info.alias or field_name
             
-            # Se o campo for 'id' ou 'Id', e for um atributo XML (comum em ABRASF)
-            if xml_tag.lower() == "id" and isinstance(value, str):
-                element.set("Id", value)
+            if self.__class__._is_xml_attribute(xml_tag):
+                element.set(xml_tag, self._format_xml_value(value))
                 continue
 
-            # Se o campo for 'uri' ou 'URI', e for um atributo XML (comum em XMLDSIG)
-            if xml_tag.upper() == "URI" and isinstance(value, str):
-                element.set("URI", value)
-                continue
+            field_namespace = self._field_xml_namespace(field_info, child_namespace)
 
             if isinstance(value, XMLNode):
-                # Recursão para nós filhos
-                element.append(value.to_element(xml_tag))
+                child_nsmap = {None: ""} if namespace is not None and field_namespace is None else None
+                element.append(value.to_element(xml_tag, namespace=field_namespace, nsmap=child_nsmap))
             elif isinstance(value, list):
-                # Trata listas de itens
                 for item in value:
                     if isinstance(item, XMLNode):
-                        element.append(item.to_element(xml_tag))
+                        child_nsmap = {None: ""} if namespace is not None and field_namespace is None else None
+                        element.append(item.to_element(xml_tag, namespace=field_namespace, nsmap=child_nsmap))
                     else:
-                        child = etree.SubElement(element, xml_tag)
-                        child.text = str(item)
+                        child_tag = f"{{{field_namespace}}}{xml_tag}" if field_namespace else xml_tag
+                        child = etree.SubElement(
+                            element,
+                            child_tag,
+                            nsmap={None: ""} if namespace is not None and field_namespace is None else None,
+                        )
+                        child.text = self._format_xml_value(item)
             else:
-                # Trata valores simples
-                child = etree.SubElement(element, xml_tag)
-                if isinstance(value, datetime):
-                    child.text = value.isoformat()
-                else:
-                    child.text = str(value)
+                child_tag = f"{{{field_namespace}}}{xml_tag}" if field_namespace else xml_tag
+                child = etree.SubElement(
+                    element,
+                    child_tag,
+                    nsmap={None: ""} if namespace is not None and field_namespace is None else None,
+                )
+                child.text = self._format_xml_value(value)
                 
         return element
 
-    def to_xml(self, tag_name: Optional[str] = None, encoding: str = "utf-8", pretty_print: bool = True) -> str:
+    def to_xml(
+        self,
+        tag_name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        encoding: str = "utf-8",
+        pretty_print: bool = True,
+        nsmap: Optional[Dict[str, str]] = None,
+    ) -> str:
         """
         Converte o nó em uma string XML.
         """
-        element = self.to_element(tag_name)
+        element = self.to_element(tag_name, namespace=namespace, nsmap=nsmap)
         return etree.tostring(element, encoding=encoding, pretty_print=pretty_print, xml_declaration=False).decode(encoding)

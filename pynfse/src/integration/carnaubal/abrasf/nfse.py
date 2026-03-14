@@ -33,10 +33,15 @@ from pynfse.src.integration.carnaubal.abrasf.models.cancelamento import (
     IdentificacaoNfse
 )
 from pynfse.src.integration.carnaubal.abrasf.models.consulta import ConsultarNfseEnvio
+from pynfse.src.integration.carnaubal.abrasf.models.consultar_lote import (
+    ConsultarLoteRpsEnvio,
+    ConsultarSituacaoLoteRpsEnvio,
+)
 from pynfse.src.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
 from pynfse.src.integration.carnaubal.abrasf.models.lote import (
     ListaRps,
-    LoteRps as LoteRpsModel
+    LoteRps as LoteRpsModel,
+    EnviarLoteRpsEnvio
 )
 from pynfse.src.integration.carnaubal.abrasf.models.rps import (
     CpfCnpj,
@@ -53,16 +58,34 @@ from pynfse.src.integration.carnaubal.abrasf.models.rps import (
 )
 
 
+class LegacyXMLSigner(XMLSigner):
+    """Permite algoritmos legados exigidos pelo provedor."""
+
+    def check_deprecated_methods(self):
+        return None
+
+
 class CarnaubalNFSe(NFSeBase):
     """
     Implementação do provedor Carnaubal seguindo o padrão ABRASF v1.
     Utiliza modelos Pydantic para geração de XML e envelope SOAP com CDATA.
     """
 
+    XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
+    XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
+    TIPOS_NS = "http://ws.speedgov.com.br/tipos_v1.xsd"
+    ENVIAR_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd"
+    CANCELAR_NFSE_ENVIO_NS = "http://ws.speedgov.com.br/cancelar_nfse_envio_v1.xsd"
+    CONSULTAR_NFSE_ENVIO_NS = "http://ws.speedgov.com.br/consultar_nfse_envio_v1.xsd"
+    CONSULTAR_NFSE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_nfse_rps_envio_v1.xsd"
+    CONSULTAR_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_lote_rps_envio_v1.xsd"
+    CONSULTAR_SITUACAO_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_situacao_lote_rps_envio_v1.xsd"
+
     def __init__(self, URL: str, **kwargs):
         super().__init__(URL, **kwargs)
 
         self._cert_cache: Dict[str, bytes] = {}
+        self._xml_cache: Dict[str, bytes] = {}
 
     def get_certificate(self, path_or_url: str, use_cache: bool = True) -> bytes:
         """
@@ -116,6 +139,29 @@ class CarnaubalNFSe(NFSeBase):
             '</cabecalho>'
         )
 
+    def _get_request_nsmap(self, schema_location: str) -> Dict[str, str]:
+        return {
+            None: schema_location,
+            "xsi": self.XSI_NS,
+        }
+
+    def _serialize_request_model(
+        self,
+        model: Any,
+        root_tag: str,
+        schema_location: str,
+    ) -> str:
+        element = model.to_element(
+            tag_name=root_tag,
+            namespace=schema_location,
+            nsmap=self._get_request_nsmap(schema_location),
+        )
+        element.set(
+            f"{{{self.XSI_NS}}}schemaLocation",
+            f"{schema_location} {Path(urlparse(schema_location).path).name}",
+        )
+        return etree.tostring(element, encoding="unicode", pretty_print=False)
+
     def _load_certificate(self, certificate_data: bytes, password: Optional[str] = None):
         """
         Carrega o certificado PEM ou PFX e retorna a chave privada e o certificado público.
@@ -139,6 +185,45 @@ class CarnaubalNFSe(NFSeBase):
             except Exception as e:
                 raise ValueError(f"Erro ao carregar certificado (PEM/PFX): {str(e)}")
 
+    def get_cnpj_from_certificate(self, cert: x509.Certificate) -> Optional[str]:
+        """
+        Extrai o CNPJ de uma instância de x509.Certificate.
+        O CNPJ em certificados brasileiros (ICP-Brasil) geralmente está no campo Subject Alternative Name (SAN)
+        ou no Common Name (CN) seguindo padrões específicos.
+        """
+        try:
+            # 1. Tenta extrair do Subject Alternative Name (SAN) - Padrão ICP-Brasil
+            try:
+                san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+                for name in san.value:
+                    if isinstance(name, x509.OtherName):
+                        # O OID do CNPJ no ICP-Brasil é 2.16.76.1.3.3
+                        if name.type_id.dotted_string == "2.16.76.1.3.3":
+                            # O valor é uma string ASN.1, pegamos apenas os números
+                            import re
+                            cnpj = re.sub(r"\D", "", name.value.decode(errors='ignore'))
+                            if len(cnpj) == 14:
+                                return cnpj
+            except Exception:
+                pass
+
+            # 2. Fallback: Tenta extrair do Common Name (CN)
+            # Geralmente no formato: NOME DA EMPRESA:00000000000000
+            common_names = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+            if common_names:
+                cn_value = common_names[0].value
+                if ":" in cn_value:
+                    cnpj = cn_value.split(":")[-1].strip()
+                    import re
+                    cnpj = re.sub(r"\D", "", cnpj)
+                    if len(cnpj) == 14:
+                        return cnpj
+            
+            return None
+        except Exception as e:
+            logger.error(f"Erro ao extrair CNPJ do certificado: {str(e)}")
+            return None
+
     def generate_signature(self, xml_element: etree._Element, certificate_data: bytes, password: Optional[str] = None) -> Signature:
         """
         Gera a assinatura digital para um elemento XML usando um certificado PEM ou PFX.
@@ -147,10 +232,10 @@ class CarnaubalNFSe(NFSeBase):
         private_key, certificate = self._load_certificate(certificate_data, password)
         
         # Prepara o assinador XML
-        signer = XMLSigner(
+        signer = LegacyXMLSigner(
             method=methods.enveloped,
-            signature_algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
-            digest_algorithm="sha256",
+            signature_algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+            digest_algorithm="sha1",
             c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
         )
         
@@ -165,25 +250,27 @@ class CarnaubalNFSe(NFSeBase):
             else:
                 raise ValueError("Não foi possível encontrar o nó Signature no XML assinado.")
 
-        ns = {"ds": "http://www.w3.org/2000/09/xmldsig#"}
         
-        signed_info_node = signature_node.find("ds:SignedInfo", ns)
-        signature_value = signature_node.find("ds:SignatureValue", ns).text.strip()
+        # Namespace para busca no XML assinado pelo signxml
+        ns_search = {"ds": "http://www.w3.org/2000/09/xmldsig#"}
+        
+        signed_info_node = signature_node.find("ds:SignedInfo", ns_search)
+        signature_value = signature_node.find("ds:SignatureValue", ns_search).text.strip()
         
         # SignedInfo details
-        c14n_method = signed_info_node.find("ds:CanonicalizationMethod", ns).get("Algorithm")
-        sig_method = signed_info_node.find("ds:SignatureMethod", ns).get("Algorithm")
+        c14n_method = signed_info_node.find("ds:CanonicalizationMethod", ns_search).get("Algorithm")
+        sig_method = signed_info_node.find("ds:SignatureMethod", ns_search).get("Algorithm")
         
         references = []
-        for ref_node in signed_info_node.findall("ds:Reference", ns):
+        for ref_node in signed_info_node.findall("ds:Reference", ns_search):
             uri = ref_node.get("URI")
-            digest_method = ref_node.find("ds:DigestMethod", ns).get("Algorithm")
-            digest_value = ref_node.find("ds:DigestValue", ns).text.strip()
+            digest_method = ref_node.find("ds:DigestMethod", ns_search).get("Algorithm")
+            digest_value = ref_node.find("ds:DigestValue", ns_search).text.strip()
             
             transforms_list = []
-            transforms_node = ref_node.find("ds:Transforms", ns)
+            transforms_node = ref_node.find("ds:Transforms", ns_search)
             if transforms_node is not None:
-                for trans_node in transforms_node.findall("ds:Transform", ns):
+                for trans_node in transforms_node.findall("ds:Transform", ns_search):
                     transforms_list.append(Transform(algorithm=trans_node.get("Algorithm")))
             
             references.append(Reference(
@@ -222,8 +309,16 @@ class CarnaubalNFSe(NFSeBase):
             lista_rps=ListaRps(rps=rps_list)
         )
         
+        envio_model = EnviarLoteRpsEnvio(lote_rps=lote_model)
+
+        body_content = self._serialize_request_model(
+            envio_model,
+            "EnviarLoteRpsEnvio",
+            self.ENVIAR_LOTE_RPS_ENVIO_NS,
+        )
+        
         return self.get_xml_base().create_soap_envelope(
-            body_content=lote_model.to_xml(),
+            body_content=body_content,
             method_name="RecepcionarLoteRps",
             header_content=self._get_default_header()
         )
@@ -247,7 +342,11 @@ class CarnaubalNFSe(NFSeBase):
         )
         
         return self.get_xml_base().create_soap_envelope(
-            body_content=CancelarNfseEnvio(pedido=pedido).to_xml(),
+            body_content=self._serialize_request_model(
+                CancelarNfseEnvio(pedido=pedido),
+                "CancelarNfseEnvio",
+                self.CANCELAR_NFSE_ENVIO_NS,
+            ),
             method_name="CancelarNfse",
             header_content=self._get_default_header()
         )
@@ -265,7 +364,11 @@ class CarnaubalNFSe(NFSeBase):
         )
         
         return self.get_xml_base().create_soap_envelope(
-            body_content=consulta.to_xml(),
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarNfseEnvio",
+                self.CONSULTAR_NFSE_ENVIO_NS,
+            ),
             method_name="ConsultarNfse",
             header_content=self._get_default_header()
         )
@@ -287,7 +390,73 @@ class CarnaubalNFSe(NFSeBase):
         )
         
         return self.get_xml_base().create_soap_envelope(
-            body_content=consulta.to_xml(),
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarNfseRpsEnvio",
+                self.CONSULTAR_NFSE_RPS_ENVIO_NS,
+            ),
             method_name="ConsultarNfsePorRps",
             header_content=self._get_default_header()
         )
+
+    def create_consult_lote_rps(self, protocolo: str, cnpj: str, inscricao_municipal: str) -> str:
+        """Cria XML para consulta de lote de RPS por protocolo."""
+        consulta = ConsultarLoteRpsEnvio(
+            prestador=IdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
+            protocolo=protocolo,
+        )
+
+        return self.get_xml_base().create_soap_envelope(
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarLoteRpsEnvio",
+                self.CONSULTAR_LOTE_RPS_ENVIO_NS,
+            ),
+            method_name="ConsultarLoteRps",
+            header_content=self._get_default_header(),
+        )
+
+    def create_consult_situacao_lote_rps(self, protocolo: str, cnpj: str, inscricao_municipal: str) -> str:
+        """Cria XML para consulta de situação de lote de RPS por protocolo."""
+        consulta = ConsultarSituacaoLoteRpsEnvio(
+            prestador=IdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
+            protocolo=protocolo,
+        )
+
+        return self.get_xml_base().create_soap_envelope(
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarSituacaoLoteRpsEnvio",
+                self.CONSULTAR_SITUACAO_LOTE_RPS_ENVIO_NS,
+            ),
+            method_name="ConsultarSituacaoLoteRps",
+            header_content=self._get_default_header(),
+        )
+
+    def get_xml_from_url(self, url: str, use_cache: bool = True) -> bytes:
+        """
+        Baixa o conteúdo XML de uma URL e armazena em um dicionário de cache.
+        """
+        if use_cache and url in self._xml_cache:
+            logger.debug(f"Recuperando XML do cache: {url}")
+            return self._xml_cache[url]
+
+        try:
+            logger.debug(f"Baixando XML da URL: {url}")
+            response = requests.get(url, verify=False, timeout=30)
+            response.raise_for_status()
+            
+            content = response.content
+            if use_cache:
+                self._xml_cache[url] = content
+                
+            return content
+        except Exception as e:
+            logger.error(f"Erro ao baixar XML da URL {url}: {str(e)}")
+            raise ValueError(f"Não foi possível obter o XML da URL: {str(e)}")

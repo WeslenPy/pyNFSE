@@ -1,7 +1,7 @@
 from pynfse.src.common.xml_node import XMLNode
-from typing import Optional, List, Annotated
-from pydantic import Field, StringConstraints, conint, confloat
-
+from typing import Dict, Optional, List, Annotated
+from pydantic import Field, StringConstraints, conint, confloat, model_validator
+from lxml import etree
 # Tipos Simples Baseados no XSD (tipos_v1.xsd)
 
 # tsNumeroNfse, tsNumeroRps, tsNumeroLote (nonNegativeInteger, 15 digits)
@@ -77,6 +77,9 @@ tsTelefone = Annotated[str, StringConstraints(min_length=1, max_length=11)]
 # tsNumeroProtocolo (string, 1-50 chars)
 tsNumeroProtocolo = Annotated[str, StringConstraints(min_length=1, max_length=50)]
 
+# tsSituacaoLoteRps (byte, pattern 1|2|3|4)
+tsSituacaoLoteRps = Annotated[int, Field(ge=1, le=4)]
+
 # tsCodigoMensagemAlerta (string, 1-4 chars)
 tsCodigoMensagemAlerta = Annotated[str, StringConstraints(min_length=1, max_length=4)]
 
@@ -89,9 +92,13 @@ tsOutrasInformacoes = Annotated[str, StringConstraints(min_length=1, max_length=
 # tsIdTag (string, 1-255 chars)
 tsIdTag = Annotated[str, StringConstraints(min_length=1, max_length=255)]
 
+# tsCodigoCancelamentoNfse (string, 1-4 chars)
+tsCodigoCancelamentoNfse = Annotated[str, StringConstraints(min_length=1, max_length=4)]
+
 class ABRASFNode(XMLNode):
     """Classe base para nós do padrão ABRASF."""
-    pass
+    def to_element(self, tag_name: Optional[str] = None, namespace: Optional[str] = None, nsmap: Optional[Dict[str, str]] = None) -> etree.Element:
+        return super().to_element(tag_name, namespace=namespace, nsmap=nsmap)
 
 class MensagemRetorno(ABRASFNode):
     codigo: tsCodigoMensagemAlerta = Field(..., alias="Codigo")
@@ -104,6 +111,12 @@ class ListaMensagemRetorno(ABRASFNode):
 class CpfCnpj(ABRASFNode):
     cpf: Optional[tsCpf] = Field(None, alias="Cpf")
     cnpj: Optional[tsCnpj] = Field(None, alias="Cnpj")
+
+    @model_validator(mode="after")
+    def validate_choice(self):
+        if bool(self.cpf) == bool(self.cnpj):
+            raise ValueError("CpfCnpj deve conter exatamente um entre Cpf ou Cnpj.")
+        return self
 
 class Endereco(ABRASFNode):
     endereco: Optional[Annotated[str, StringConstraints(max_length=125)]] = Field(None, alias="Endereco")

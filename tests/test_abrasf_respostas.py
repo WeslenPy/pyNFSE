@@ -2,7 +2,8 @@ import pytest
 from datetime import datetime, date
 from pynfse.src.integration.carnaubal.abrasf.models.respostas import (
     EnviarLoteRpsResposta, ConsultarNfseRpsResposta, ConsultarNfseResposta,
-    CancelarNfseResposta, CompNfse, Nfse, InfNfse
+    CancelarNfseResposta, ConsultarLoteRpsResposta, ConsultarSituacaoLoteRpsResposta,
+    CompNfse, Nfse, InfNfse
 )
 from pynfse.src.integration.carnaubal.abrasf.models.base import ListaMensagemRetorno, MensagemRetorno
 from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
@@ -56,8 +57,13 @@ def test_consultar_nfse_rps_resposta_completa():
                         "Discriminacao": "Teste",
                         "CodigoMunicipio": 1234567
                     },
-                    "PrestadorServico": {"Cnpj": "12345678000199"},
-                    "TomadorServico": {"RazaoSocial": "Tomador"}
+                    "PrestadorServico": {
+                        "IdentificacaoPrestador": {"Cnpj": "12345678000199"},
+                        "RazaoSocial": "Prestador",
+                        "Endereco": {"Endereco": "Rua A", "Numero": "1"}
+                    },
+                    "TomadorServico": {"RazaoSocial": "Tomador"},
+                    "OrgaoGerador": {"CodigoMunicipio": 1234567, "Uf": "CE"}
                 }
             }
         }
@@ -72,12 +78,43 @@ def test_cancelar_nfse_resposta_sucesso():
     data = {
         "Cancelamento": {
             "Confirmacao": {
-                "DataHora": "2024-03-09T11:00:00"
+                "Pedido": {
+                    "InfPedidoCancelamento": {
+                        "IdentificacaoNfse": {
+                            "Numero": 1,
+                            "Cnpj": "12345678000199",
+                            "CodigoMunicipio": 1234567
+                        },
+                        "CodigoCancelamento": "1"
+                    }
+                },
+                "InfConfirmacaoCancelamento": {
+                    "Sucesso": True,
+                    "DataHora": "2024-03-09T11:00:00"
+                }
             }
         }
     }
     resp = CancelarNfseResposta(**data)
-    assert resp.cancelamento.confirmacao.data_hora == datetime(2024, 3, 9, 11, 0)
+    assert resp.cancelamento.confirmacao.inf_confirmacao_cancelamento.data_hora == datetime(2024, 3, 9, 11, 0)
+
+def test_consultar_lote_rps_resposta():
+    data = {
+        "ListaNfse": {
+            "CompNfse": []
+        }
+    }
+    resp = ConsultarLoteRpsResposta(**data)
+    assert resp.lista_nfse is not None
+
+def test_consultar_situacao_lote_rps_resposta():
+    data = {
+        "NumeroLote": 10,
+        "Situacao": 2
+    }
+    resp = ConsultarSituacaoLoteRpsResposta(**data)
+    assert resp.numero_lote == 10
+    assert resp.situacao == 2
 
 def test_parse_response_soap_generic(carnaubal_provider):
     """Testa o método parse_response genérico com um envelope SOAP real."""

@@ -1,18 +1,26 @@
 from typing import Optional
 from pydantic import Field
-from pynfse.src.integration.carnaubal.abrasf.models.base import ABRASFNode, tsCnpj, tsInscricaoMunicipal, tsCodigoMunicipioIbge
+from pynfse.src.integration.carnaubal.abrasf.models.base import (
+    ABRASFNode,
+    tsCnpj,
+    tsInscricaoMunicipal,
+    tsCodigoMunicipioIbge,
+    tsNumeroNfse,
+    tsCodigoCancelamentoNfse,
+    tsIdTag,
+)
 from pynfse.src.common.signature import Signature
 
 class IdentificacaoNfse(ABRASFNode):
-    numero: int = Field(..., alias="Numero")
+    numero: tsNumeroNfse = Field(..., alias="Numero")
     cnpj: tsCnpj = Field(..., alias="Cnpj")
     inscricao_municipal: Optional[tsInscricaoMunicipal] = Field(None, alias="InscricaoMunicipal")
     codigo_municipio: tsCodigoMunicipioIbge = Field(..., alias="CodigoMunicipio")
 
 class InfPedidoCancelamento(ABRASFNode):
-    id: Optional[str] = Field(None, alias="Id")
+    id: Optional[tsIdTag] = Field(None, alias="Id")
     identificacao_nfse: IdentificacaoNfse = Field(..., alias="IdentificacaoNfse")
-    codigo_cancelamento: str = Field(..., alias="CodigoCancelamento")
+    codigo_cancelamento: tsCodigoCancelamentoNfse = Field(..., alias="CodigoCancelamento")
 
 class PedidoCancelamento(ABRASFNode):
     inf_pedido_cancelamento: InfPedidoCancelamento = Field(..., alias="InfPedidoCancelamento")

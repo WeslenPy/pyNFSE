@@ -10,6 +10,7 @@ from pynfse.src.integration.carnaubal.abrasf.models.cancelamento import (
     CancelarNfseEnvio, PedidoCancelamento, InfPedidoCancelamento, IdentificacaoNfse
 )
 from pynfse.src.integration.carnaubal.abrasf.models.consulta import ConsultarNfseEnvio, PeriodoEmissao
+from pynfse.src.integration.carnaubal.abrasf.models.consultar_lote import ConsultarLoteRpsEnvio, ConsultarSituacaoLoteRpsEnvio
 from pynfse.src.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
 from pynfse.src.integration.carnaubal.abrasf.models.base import CpfCnpj
 
@@ -122,6 +123,26 @@ def test_model_consultar_rps_xml():
     assert "<Numero>123</Numero>" in xml
     assert "<Cnpj>12345678000199</Cnpj>" in xml
 
+def test_model_consultar_lote_xml():
+    consulta = ConsultarLoteRpsEnvio(
+        prestador=IdentificacaoPrestador(cnpj="12345678000199", inscricao_municipal="12345"),
+        protocolo="PROTOCOLO123"
+    )
+    xml = consulta.to_xml()
+
+    assert "<ConsultarLoteRpsEnvio" in xml
+    assert "<Protocolo>PROTOCOLO123</Protocolo>" in xml
+
+def test_model_consultar_situacao_lote_xml():
+    consulta = ConsultarSituacaoLoteRpsEnvio(
+        prestador=IdentificacaoPrestador(cnpj="12345678000199", inscricao_municipal="12345"),
+        protocolo="PROTOCOLO123"
+    )
+    xml = consulta.to_xml()
+
+    assert "<ConsultarSituacaoLoteRpsEnvio" in xml
+    assert "<Protocolo>PROTOCOLO123</Protocolo>" in xml
+
 def test_cpf_cnpj_validation():
     """Testa o modelo auxiliar CpfCnpj."""
     # CPF válido
@@ -134,5 +155,6 @@ def test_cpf_cnpj_validation():
     assert c.cnpj == "12345678000199"
     assert "<Cnpj>12345678000199</Cnpj>" in c.to_xml()
     
-    # Ambos preenchidos (inválido por lógica de negócio, mas o modelo permite um ou outro)
-    # Aqui poderíamos adicionar uma validação customizada no modelo se necessário.
+    # Ambos preenchidos devem falhar pela regra de choice do XSD
+    with pytest.raises(ValidationError):
+        CpfCnpj(cpf="12345678901", cnpj="12345678000199")

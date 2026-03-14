@@ -52,32 +52,40 @@ class XMLBase(ABC):
     def __init__(self, templates: Optional[Path] = None):
         self.templates = templates
 
+    @staticmethod
+    def _compact_xml(xml_content: str) -> str:
+        xml_content = xml_content.strip()
+        return re.sub(r">\s+<", "><", xml_content)
+
     def create_soap_envelope(self, body_content: str, method_name: str, header_content: Optional[str] = None) -> str:
         """
         Cria um envelope SOAP 1.1 genérico com CDATA para o padrão ABRASF/SpeedGov.
         """
-        # Namespaces padrão
         soap_env = "http://schemas.xmlsoap.org/soap/envelope/"
         nfse_ns = "http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd"
-        
-        envelope = etree.Element(f"{{{soap_env}}}Envelope", nsmap={
-            'soapenv': soap_env,
-            'nfse': nfse_ns
-        })
-        
-        etree.SubElement(envelope, f"{{{soap_env}}}Header")
-        body = etree.SubElement(envelope, f"{{{soap_env}}}Body")
-        
-        method = etree.SubElement(body, f"{{{nfse_ns}}}{method_name}")
-        
-        if header_content:
-            header_tag = etree.SubElement(method, "header")
-            header_tag.text = etree.CDATA(header_content)
-            
-        parameters_tag = etree.SubElement(method, "parameters")
-        parameters_tag.text = etree.CDATA(body_content)
-        
-        return etree.tostring(envelope, encoding="UTF-8", xml_declaration=True, pretty_print=True).decode("utf-8")
+        compact_body = self._compact_xml(body_content)
+        compact_header = self._compact_xml(header_content) if header_content else None
+
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            f'<soapenv:Envelope xmlns:soapenv="{soap_env}"',
+            f'      xmlns:nfse="{nfse_ns}">',
+            '      <soapenv:Header />',
+            '      <soapenv:Body>',
+            f'            <nfse:{method_name}>',
+        ]
+
+        if compact_header:
+            lines.append(f'                  <header><![CDATA[{compact_header}]]></header>')
+
+        lines.extend([
+            f'                  <parameters><![CDATA[{compact_body}]]></parameters>',
+            f'            </nfse:{method_name}>',
+            '      </soapenv:Body>',
+            '</soapenv:Envelope>',
+        ])
+
+        return "\n".join(lines)
 
     @abstractmethod
     def create_rps_nfse(self, lote) -> str:

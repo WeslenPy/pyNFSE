@@ -10,7 +10,18 @@ from cryptography.hazmat.primitives import hashes
 
 from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
 from pynfse.src.integration.carnaubal.abrasf.models.rps import Rps, InfRps, IdentificacaoRps, DadosServico, Valores, IdentificacaoPrestador, DadosTomador
-from pynfse.src.common.signature import Signature
+from pynfse.src.common.signature import (
+    Signature,
+    SignedInfo,
+    CanonicalizationMethod,
+    SignatureMethod,
+    Reference,
+    Transforms,
+    Transform,
+    DigestMethod,
+    KeyInfo,
+    X509Data,
+)
 
 @pytest.fixture
 def mock_certificate():
@@ -63,7 +74,8 @@ def test_generate_signature(carnaubal_provider, mock_certificate):
     
     assert isinstance(signature, Signature)
     assert signature.signature_value is not None
-    assert signature.signed_info.signature_method.algorithm == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+    assert signature.signed_info.signature_method.algorithm == "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
+    assert signature.signed_info.reference[0].digest_method.algorithm == "http://www.w3.org/2000/09/xmldsig#sha1"
     assert signature.key_info.x509_data.x509_certificate is not None
 
 def test_create_rps_nfse_xml(carnaubal_provider):
@@ -96,6 +108,58 @@ def test_create_rps_nfse_xml(carnaubal_provider):
     assert "<Cnpj>12345678000199</Cnpj>" in xml
     assert "<InscricaoMunicipal>12345</InscricaoMunicipal>" in xml
     assert "<![CDATA[" in xml
+    assert '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"' in xml
+    assert 'xmlns:nfse="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd"' in xml
+    assert '<EnviarLoteRpsEnvio xmlns="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd"' in xml
+    assert 'xsi:schemaLocation="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd enviar_lote_rps_envio_v1.xsd"' in xml
+    assert '<LoteRps xmlns=""' in xml
+    assert "<ds:Signature" not in xml
+    assert "<ds:SignedInfo" not in xml
+
+def test_create_rps_nfse_signed_xml_has_signature_without_ds_prefix(carnaubal_provider):
+    signature = Signature(
+        signed_info=SignedInfo(
+            canonicalization_method=CanonicalizationMethod(algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"),
+            signature_method=SignatureMethod(algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"),
+            reference=[Reference(
+                uri="#rps1",
+                transforms=Transforms(transform=[Transform(algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature")]),
+                digest_method=DigestMethod(algorithm="http://www.w3.org/2000/09/xmldsig#sha1"),
+                digest_value="fake-digest"
+            )]
+        ),
+        signature_value="fake-signature",
+        key_info=KeyInfo(x509_data=X509Data(x509_certificate="fake-cert"))
+    )
+
+    rps = Rps(inf_rps=InfRps(
+        id="rps1",
+        identificacao_rps=IdentificacaoRps(numero=1, serie="A", tipo=1),
+        data_emissao=datetime.now(),
+        natureza_operacao=1,
+        optante_simples_national=1,
+        incentivador_cultural=2,
+        status=1,
+        servico=DadosServico(
+            valores=Valores(valor_servicos=100.0, iss_retido=2),
+            item_lista_servico="1.01",
+            discriminacao="Teste assinado",
+            codigo_municipio=1234567
+        ),
+        prestador=IdentificacaoPrestador(cnpj="12345678000199"),
+        tomador=DadosTomador(razao_social="Tomador Teste")
+    ), signature=signature)
+
+    xml = carnaubal_provider.create_rps_nfse(
+        rps_list=[rps],
+        numero_lote=123,
+        cnpj="12345678000199",
+        inscricao_municipal="12345"
+    )
+
+    assert "<ds:Signature" not in xml
+    assert "<ds:SignedInfo" not in xml
+    assert '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">' in xml
 
 def test_create_cancel_nfse_xml(carnaubal_provider):
     xml = carnaubal_provider.create_cancel_nfse(
@@ -119,7 +183,7 @@ def test_create_consult_nfse_xml(carnaubal_provider):
     )
     
     assert "ConsultarNfse" in xml
-    assert "<NumeroNfse>10</NumeroNfse>" in xml
+    assert '<NumeroNfse xmlns="">10</NumeroNfse>' in xml
     assert "<Cnpj>12345678000199</Cnpj>" in xml
 
 def test_create_consult_rps_xml(carnaubal_provider):
@@ -135,6 +199,26 @@ def test_create_consult_rps_xml(carnaubal_provider):
     assert "<Numero>123</Numero>" in xml
     assert "<Serie>A</Serie>" in xml
     assert "<Tipo>1</Tipo>" in xml
+
+def test_create_consult_lote_rps_xml(carnaubal_provider):
+    xml = carnaubal_provider.create_consult_lote_rps(
+        protocolo="PROTOCOLO123",
+        cnpj="12345678000199",
+        inscricao_municipal="12345"
+    )
+
+    assert "ConsultarLoteRps" in xml
+    assert '<Protocolo xmlns="">PROTOCOLO123</Protocolo>' in xml
+
+def test_create_consult_situacao_lote_rps_xml(carnaubal_provider):
+    xml = carnaubal_provider.create_consult_situacao_lote_rps(
+        protocolo="PROTOCOLO123",
+        cnpj="12345678000199",
+        inscricao_municipal="12345"
+    )
+
+    assert "ConsultarSituacaoLoteRps" in xml
+    assert '<Protocolo xmlns="">PROTOCOLO123</Protocolo>' in xml
 
 def test_get_certificate_local(carnaubal_provider, tmp_path):
     """Testa o carregamento de certificado de arquivo local."""

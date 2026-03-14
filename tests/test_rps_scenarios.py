@@ -207,8 +207,10 @@ def test_rps_com_assinatura():
     rps = Rps(inf_rps=inf_rps, signature=signature)
     xml = rps.to_xml(pretty_print=True)
     
-    assert "<Signature" in xml
+    assert '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">' in xml
     assert "<SignedInfo>" in xml
+    assert 'Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"' in xml
+    assert 'Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"' in xml
     assert "<SignatureValue>fake-signature-value</SignatureValue>" in xml
     assert "<X509Certificate>fake-cert</X509Certificate>" in xml
     assert 'URI="#rps1"' in xml
@@ -240,7 +242,7 @@ def test_lote_com_assinatura():
     )
     
     xml = lote.to_xml(pretty_print=True)
-    assert "<Signature" in xml
+    assert '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">' in xml
     assert 'URI="#lote1"' in xml
     assert "<SignatureValue>fake-signature-lote</SignatureValue>" in xml
     """Cenário 5: Lote com múltiplos RPS de diferentes tipos"""
