@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Optional, List, Annotated
 from pydantic import Field, StringConstraints
 from pynfse.src.integration.carnaubal.abrasf.models.base import (
-    ABRASFNode, CpfCnpj, Endereco, Contato,
+    ABRASFNode, ABRASFTypesNode, CpfCnpj, Endereco, Contato,
     tsNumero, tsSerieRps, tsTipoRps, tsInscricaoMunicipal,
     tsRazaoSocial, tsValor, tsItemListaServico, tsCodigoCnae,
     tsCodigoTributacao, tsDiscriminacao, tsCodigoMunicipioIbge,
@@ -11,20 +11,20 @@ from pynfse.src.integration.carnaubal.abrasf.models.base import (
 )
 from pynfse.src.common.signature import Signature
 
-class IdentificacaoRps(ABRASFNode):
+class IdentificacaoRps(ABRASFTypesNode):
     numero: tsNumero = Field(..., alias="Numero")
     serie: tsSerieRps = Field(..., alias="Serie")
     tipo: tsTipoRps = Field(..., alias="Tipo")
 
-class IdentificacaoPrestador(ABRASFNode):
+class IdentificacaoPrestador(ABRASFTypesNode):
     cnpj: Annotated[str, StringConstraints(min_length=14, max_length=14)] = Field(..., alias="Cnpj")
     inscricao_municipal: Optional[tsInscricaoMunicipal] = Field(None, alias="InscricaoMunicipal")
 
-class IdentificacaoTomador(ABRASFNode):
+class IdentificacaoTomador(ABRASFTypesNode):
     cpf_cnpj: Optional[CpfCnpj] = Field(None, alias="CpfCnpj")
     inscricao_municipal: Optional[tsInscricaoMunicipal] = Field(None, alias="InscricaoMunicipal")
 
-class IdentificacaoIntermediarioServico(ABRASFNode):
+class IdentificacaoIntermediarioServico(ABRASFTypesNode):
     razao_social: tsRazaoSocial = Field(..., alias="RazaoSocial")
     cpf_cnpj: CpfCnpj = Field(..., alias="CpfCnpj")
     inscricao_municipal: Optional[tsInscricaoMunicipal] = Field(None, alias="InscricaoMunicipal")
@@ -39,49 +39,49 @@ class IdentificacaoIntermediarioServico(ABRASFNode):
     email: Optional[Annotated[str, StringConstraints(max_length=120)]] = Field(None, alias="Email")
     nif: Optional[Annotated[str, StringConstraints(max_length=40)]] = Field(None, alias="NIF")
 
-class DadosConstrucaoCivil(ABRASFNode):
+class DadosConstrucaoCivil(ABRASFTypesNode):
     codigo_obra: Annotated[str, StringConstraints(max_length=15)] = Field(..., alias="CodigoObra")
     art: Annotated[str, StringConstraints(max_length=15)] = Field(..., alias="Art")
 
-class DadosTomador(ABRASFNode):
+class DadosTomador(ABRASFTypesNode):
     identificacao_tomador: Optional[IdentificacaoTomador] = Field(None, alias="IdentificacaoTomador")
     razao_social: Optional[tsRazaoSocial] = Field(None, alias="RazaoSocial")
     endereco: Optional[Endereco] = Field(None, alias="Endereco")
     contato: Optional[Contato] = Field(None, alias="Contato")
 
-class DadosPrestador(ABRASFNode):
+class DadosPrestador(ABRASFTypesNode):
     identificacao_prestador: IdentificacaoPrestador = Field(..., alias="IdentificacaoPrestador")
     razao_social: tsRazaoSocial = Field(..., alias="RazaoSocial")
     nome_fantasia: Optional[Annotated[str, StringConstraints(max_length=60)]] = Field(None, alias="NomeFantasia")
     endereco: Endereco = Field(..., alias="Endereco")
     contato: Optional[Contato] = Field(None, alias="Contato")
 
-class IdentificacaoOrgaoGerador(ABRASFNode):
+class IdentificacaoOrgaoGerador(ABRASFTypesNode):
     codigo_municipio: tsCodigoMunicipioIbge = Field(..., alias="CodigoMunicipio")
     uf: tsUf = Field(..., alias="Uf")
 
-class Valores(ABRASFNode):
+class Valores(ABRASFTypesNode):
     valor_servicos: tsValor = Field(..., alias="ValorServicos")
-    valor_deducoes: Optional[tsValor] = Field(None, alias="ValorDeducoes")
-    valor_pis: Optional[tsValor] = Field(None, alias="ValorPis")
-    valor_cofins: Optional[tsValor] = Field(None, alias="ValorCofins")
-    valor_inss: Optional[tsValor] = Field(None, alias="ValorInss")
-    valor_ir: Optional[tsValor] = Field(None, alias="ValorIr")
-    valor_csll: Optional[tsValor] = Field(None, alias="ValorCsll")
-    iss_retido: tsStatus12 = Field(..., alias="IssRetido")
+    valor_deducoes: Optional[tsValor] = Field(0, alias="ValorDeducoes")
+    valor_pis: Optional[tsValor] = Field(0, alias="ValorPis")
+    valor_cofins: Optional[tsValor] = Field(0, alias="ValorCofins")
+    valor_inss: Optional[tsValor] = Field(0, alias="ValorInss")
+    valor_ir: Optional[tsValor] = Field(0, alias="ValorIr")
+    valor_csll: Optional[tsValor] = Field(0, alias="ValorCsll")
+    iss_retido: tsStatus12 = Field(2, alias="IssRetido")
     valor_iss: Optional[tsValor] = Field(None, alias="ValorIss")
-    valor_iss_retido: Optional[tsValor] = Field(None, alias="ValorIssRetido")
-    outras_retencoes: Optional[tsValor] = Field(None, alias="OutrasRetencoes")
+    valor_iss_retido: Optional[tsValor] = Field(0, alias="ValorIssRetido")
+    outras_retencoes: Optional[tsValor] = Field(0, alias="OutrasRetencoes")
     base_calculo: Optional[tsValor] = Field(None, alias="BaseCalculo")
     aliquota: Optional[tsAliquota] = Field(None, alias="Aliquota")
     valor_liquido_nfse: Optional[tsValor] = Field(None, alias="ValorLiquidoNfse")
-    desconto_condicionado: Optional[tsValor] = Field(None, alias="DescontoCondicionado")
-    desconto_incondicionado: Optional[tsValor] = Field(None, alias="DescontoIncondicionado")
+    desconto_condicionado: Optional[tsValor] = Field(0, alias="DescontoCondicionado")
+    desconto_incondicionado: Optional[tsValor] = Field(0, alias="DescontoIncondicionado")
     cst_pis_cofins: Optional[Annotated[str, StringConstraints(max_length=10)]] = Field(None, alias="CSTPisCofins")
     base_calculo_pis_cofins: Optional[tsValor] = Field(None, alias="BaseCalculoPisCofins")
     tipo_retencao_pis_cofins: Optional[int] = Field(None, alias="TipoRetencaoPisCofins")
 
-class DadosServico(ABRASFNode):
+class DadosServico(ABRASFTypesNode):
     valores: Valores = Field(..., alias="Valores")
     item_lista_servico: tsItemListaServico = Field(..., alias="ItemListaServico")
     codigo_cnae: Optional[tsCodigoCnae] = Field(None, alias="CodigoCnae")
@@ -90,7 +90,7 @@ class DadosServico(ABRASFNode):
     codigo_municipio: tsCodigoMunicipioIbge = Field(..., alias="CodigoMunicipio")
 
 # Blocos NFS-e Nacional encapsulados
-class DadosDPS(ABRASFNode):
+class DadosDPS(ABRASFTypesNode):
     tp_emit: Optional[Annotated[str, StringConstraints(max_length=1)]] = Field(None, alias="TpEmit")
     tp_amb: Optional[int] = Field(None, alias="TpAmb")
     dh_emi: Optional[datetime] = Field(None, alias="DhEmi")
@@ -104,19 +104,19 @@ class DadosDPS(ABRASFNode):
     reg_esp_trib: Optional[Annotated[str, StringConstraints(max_length=10)]] = Field(None, alias="RegEspTrib")
     reg_ap_trib_sn: Optional[Annotated[str, StringConstraints(max_length=1)]] = Field(None, alias="RegApTribSN")
 
-class EnderecoObra(ABRASFNode):
+class EnderecoObra(ABRASFTypesNode):
     cep: Optional[Annotated[str, StringConstraints(max_length=10)]] = Field(None, alias="Cep")
     logradouro: Optional[Annotated[str, StringConstraints(max_length=125)]] = Field(None, alias="Logradouro")
     numero: Optional[Annotated[str, StringConstraints(max_length=10)]] = Field(None, alias="Numero")
     complemento: Optional[Annotated[str, StringConstraints(max_length=60)]] = Field(None, alias="Complemento")
     bairro: Optional[Annotated[str, StringConstraints(max_length=60)]] = Field(None, alias="Bairro")
 
-class DadosObra(ABRASFNode):
+class DadosObra(ABRASFTypesNode):
     codigo_obra: Optional[Annotated[str, StringConstraints(max_length=30)]] = Field(None, alias="CodigoObra")
     insc_imob_fisc: Optional[Annotated[str, StringConstraints(max_length=30)]] = Field(None, alias="InscImobFisc")
     endereco_obra: Optional[EnderecoObra] = Field(None, alias="EnderecoObra")
 
-class ComercioExterior(ABRASFNode):
+class ComercioExterior(ABRASFTypesNode):
     md_prestacao: Optional[int] = Field(None, alias="MdPrestacao")
     vinc_prest: Optional[int] = Field(None, alias="VincPrest")
     tp_moeda: Optional[int] = Field(None, alias="TpMoeda")
@@ -129,22 +129,22 @@ class ComercioExterior(ABRASFNode):
     mdic: Optional[int] = Field(None, alias="MDIC")
     c_pais_result: Optional[Annotated[str, StringConstraints(max_length=4)]] = Field(None, alias="CPaisResult")
 
-class ExigibilidadeSuspensa(ABRASFNode):
+class ExigibilidadeSuspensa(ABRASFTypesNode):
     tp_susp: Optional[int] = Field(None, alias="TpSusp")
     n_processo: Optional[Annotated[str, StringConstraints(max_length=30)]] = Field(None, alias="NProcesso")
 
-class BeneficioMunicipal(ABRASFNode):
+class BeneficioMunicipal(ABRASFTypesNode):
     tp_bm: Optional[int] = Field(None, alias="TpBM")
     nbm: Optional[Annotated[str, StringConstraints(max_length=14)]] = Field(None, alias="NBM")
     v_red_bcbm: Optional[tsValor] = Field(None, alias="VRedBCBM")
     p_red_bcbm: Optional[tsValor] = Field(None, alias="PRedBCBM")
 
-class ReembolsoRepasse(ABRASFNode):
+class ReembolsoRepasse(ABRASFTypesNode):
     tp_reemb_rep_res: Optional[int] = Field(None, alias="TpReembRepRes")
     x_tp_reemb_rep_res: Optional[Annotated[str, StringConstraints(max_length=2000)]] = Field(None, alias="XTpReembRepRes")
     v_reemb_rep_res: Optional[tsValor] = Field(None, alias="VReembRepRes")
 
-class Destinatario(ABRASFNode):
+class Destinatario(ABRASFTypesNode):
     cnpj_cpf: Optional[Annotated[str, StringConstraints(min_length=11, max_length=14)]] = Field(None, alias="CnpjCpf")
     nome: Optional[tsRazaoSocial] = Field(None, alias="Nome")
     logradouro: Optional[Annotated[str, StringConstraints(max_length=125)]] = Field(None, alias="Logradouro")
@@ -161,7 +161,7 @@ class Destinatario(ABRASFNode):
     email: Optional[Annotated[str, StringConstraints(max_length=120)]] = Field(None, alias="Email")
     telefone: Optional[Annotated[str, StringConstraints(max_length=20)]] = Field(None, alias="Telefone")
 
-class ControleIBSCBS(ABRASFNode):
+class ControleIBSCBS(ABRASFTypesNode):
     fin_nfse: Optional[int] = Field(None, alias="FinNFSe")
     ind_final: Optional[int] = Field(None, alias="IndFinal")
     tp_oper: Optional[int] = Field(None, alias="TpOper")
@@ -170,7 +170,7 @@ class ControleIBSCBS(ABRASFNode):
     c_ind_op: Optional[Annotated[str, StringConstraints(max_length=6)]] = Field(None, alias="CIndOp")
     x_tp_ente_gov: Optional[Annotated[str, StringConstraints(max_length=2000)]] = Field(None, alias="XTpEnteGov")
 
-class IBSCBS(ABRASFNode):
+class IBSCBS(ABRASFTypesNode):
     ibscbs_base_calculo: Optional[tsValor] = Field(None, alias="IBSCBSBaseCalculo")
     ibsu_f_aliquota: Optional[tsValor] = Field(None, alias="IBSUFAliquota")
     ib_mun_aliquota: Optional[tsValor] = Field(None, alias="IBSMunAliquota")
@@ -201,12 +201,12 @@ class IBSCBS(ABRASFNode):
     localidade_incidencia_nome: Optional[Annotated[str, StringConstraints(max_length=2000)]] = Field(None, alias="LocalidadeIncidenciaNome")
     perc_redutor_compra_gov: Optional[tsValor] = Field(None, alias="PercRedutorCompraGov")
 
-class InfRps(ABRASFNode):
+class InfRps(ABRASFTypesNode):
     id: Optional[Annotated[str, StringConstraints(max_length=255)]] = Field(None, alias="Id")
     identificacao_rps: IdentificacaoRps = Field(..., alias="IdentificacaoRps")
     data_emissao: datetime = Field(..., alias="DataEmissao")
     natureza_operacao: tsNaturezaOperacao = Field(..., alias="NaturezaOperacao")
-    regime_special_tributation: Optional[tsRegimeEspecialTributacao] = Field(None, alias="RegimeEspecialTributacao")
+    regime_especial_tributacao: Optional[tsRegimeEspecialTributacao] = Field(None, alias="RegimeEspecialTributacao")
     optante_simples_national: tsStatus12 = Field(..., alias="OptanteSimplesNacional")
     incentivador_cultural: tsStatus12 = Field(..., alias="IncentivadorCultural")
     status: tsStatus12 = Field(..., alias="Status")
@@ -229,6 +229,14 @@ class InfRps(ABRASFNode):
     ibscbs: Optional[IBSCBS] = Field(None, alias="IBSCBS")
     data_competencia: Optional[date] = Field(None, alias="DataCompetencia")
 
-class Rps(ABRASFNode):
+class Rps(ABRASFTypesNode):
     inf_rps: InfRps = Field(..., alias="InfRps")
-    signature: Optional[Signature] = Field(None, alias="Signature")
+    signature: Optional[Signature] = Field(
+        None,
+        alias="Signature",
+        json_schema_extra={
+            "xml_namespace": None,
+            "xml_child_namespace": None,
+            "xml_reset_default_namespace": False,
+        },
+    )

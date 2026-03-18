@@ -1,0 +1,23 @@
+<nfse:RecepcionarLoteRps>
+    <header>
+        <?xml version="1.0" encoding="UTF-8"?>
+
+        <p:cabecalho versao="1" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:p="http://ws.speedgov.com.br/cabecalho_v1.xsd" xmlns:p1="http://ws.speedgov.com.br/tipos_v1.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ws.speedgov.com.br/cabecalho_v1.xsd">
+            <versaoDados>1</versaoDados>
+        </p:cabecalho>
+    </header> 
+    <parameters>
+        <?xml version="1.0" encoding="UTF-8"?>
+
+        <p:EnviarLoteRpsEnvio xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:p="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd" xmlns:p1="http://ws.speedgov.com.br/tipos_v1.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd">
+            <p:LoteRps Id="">
+                <p1:NumeroLote>{{lote.number}}</p1:NumeroLote>
+                <p1:Cnpj>40114832000153</p1:Cnpj>
+                <p1:InscricaoMunicipal>10759</p1:InscricaoMunicipal>
+                <p1:QuantidadeRps>1</p1:QuantidadeRps>
+                <p1:ListaRps> {% include 'info_rps.xml' %} </p1:ListaRps>
+            </p:LoteRps>
+        </p:EnviarLoteRpsEnvio>
+        
+    </parameters>
+</nfse:RecepcionarLoteRps>

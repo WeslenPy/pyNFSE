@@ -89,7 +89,7 @@ class EnviarLoteRpsResposta(ABRASFNode):
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(
         None,
         alias="ListaMensagemRetorno",
-        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE},
+        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE, "xml_child_namespace": None},
     )
 
 class ConsultarNfseRpsResposta(ABRASFNode):
@@ -97,7 +97,7 @@ class ConsultarNfseRpsResposta(ABRASFNode):
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(
         None,
         alias="ListaMensagemRetorno",
-        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE},
+        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE, "xml_child_namespace": None},
     )
 
 class ListaNfse(ABRASFNode):
@@ -108,7 +108,7 @@ class ConsultarNfseResposta(ABRASFNode):
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(
         None,
         alias="ListaMensagemRetorno",
-        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE},
+        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE, "xml_child_namespace": None},
     )
 
 class CancelarNfseResposta(ABRASFNode):
@@ -116,7 +116,7 @@ class CancelarNfseResposta(ABRASFNode):
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(
         None,
         alias="ListaMensagemRetorno",
-        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE},
+        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE, "xml_child_namespace": None},
     )
 
 class ConsultarLoteRpsResposta(ABRASFNode):
@@ -124,7 +124,7 @@ class ConsultarLoteRpsResposta(ABRASFNode):
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(
         None,
         alias="ListaMensagemRetorno",
-        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE},
+        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE, "xml_child_namespace": None},
     )
 
 class ConsultarSituacaoLoteRpsResposta(ABRASFNode):
@@ -133,5 +133,5 @@ class ConsultarSituacaoLoteRpsResposta(ABRASFNode):
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(
         None,
         alias="ListaMensagemRetorno",
-        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE},
+        json_schema_extra={"xml_namespace": TIPOS_NAMESPACE, "xml_child_namespace": None},
     )

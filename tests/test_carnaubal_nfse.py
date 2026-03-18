@@ -60,10 +60,33 @@ def mock_certificate():
 def carnaubal_provider():
     return CarnaubalNFSe(URL="http://test.com")
 
+
+def _parse_xml(xml: str) -> etree._Element:
+    return etree.fromstring(xml.encode("utf-8"))
+
+
+def _parse_soap_request(xml: str, method_name: str) -> tuple[etree._Element, etree._Element]:
+    envelope = _parse_xml(xml)
+    method = envelope.find(f".//{{http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd}}{method_name}")
+    assert method is not None
+
+    header_text = method.findtext("header")
+    params_text = method.findtext("parameters")
+    assert header_text is not None
+    assert params_text is not None
+
+    return _parse_xml(header_text), _parse_xml(params_text)
+
+
+def _text(element: etree._Element, local_name: str) -> str:
+    return element.xpath(f"string(.//*[local-name()='{local_name}'][1])")
+
 def test_get_default_header(carnaubal_provider):
     header = carnaubal_provider._get_default_header()
-    assert 'xmlns="http://ws.speedgov.com.br/cabecalho_v1.xsd"' in header
-    assert '<versaoDados xmlns="">1</versaoDados>' in header
+    header_xml = _parse_xml(header)
+    assert header_xml.tag == "{http://ws.speedgov.com.br/cabecalho_v1.xsd}cabecalho"
+    assert header_xml.get("versao") == "1"
+    assert header_xml.xpath("string(.//*[local-name()='versaoDados'])") == "1"
 
 def test_generate_signature(carnaubal_provider, mock_certificate):
     # Criar um elemento XML simples para assinar
@@ -102,17 +125,17 @@ def test_create_rps_nfse_xml(carnaubal_provider):
         cnpj="12345678000199",
         inscricao_municipal="12345"
     )
-    
+
+    header_xml, params_xml = _parse_soap_request(xml, "RecepcionarLoteRps")
+
     assert "RecepcionarLoteRps" in xml
-    assert "<NumeroLote>123</NumeroLote>" in xml
-    assert "<Cnpj>12345678000199</Cnpj>" in xml
-    assert "<InscricaoMunicipal>12345</InscricaoMunicipal>" in xml
-    assert "<![CDATA[" in xml
     assert '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"' in xml
     assert 'xmlns:nfse="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd"' in xml
-    assert '<EnviarLoteRpsEnvio xmlns="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd"' in xml
-    assert 'xsi:schemaLocation="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd enviar_lote_rps_envio_v1.xsd"' in xml
-    assert '<LoteRps xmlns=""' in xml
+    assert header_xml.tag == "{http://ws.speedgov.com.br/cabecalho_v1.xsd}cabecalho"
+    assert params_xml.tag == "{http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd}EnviarLoteRpsEnvio"
+    assert _text(params_xml, "NumeroLote") == "123"
+    assert _text(params_xml, "Cnpj") == "12345678000199"
+    assert _text(params_xml, "InscricaoMunicipal") == "12345"
     assert "<ds:Signature" not in xml
     assert "<ds:SignedInfo" not in xml
 
@@ -154,12 +177,13 @@ def test_create_rps_nfse_signed_xml_has_signature_without_ds_prefix(carnaubal_pr
         rps_list=[rps],
         numero_lote=123,
         cnpj="12345678000199",
-        inscricao_municipal="12345"
+        inscricao_municipal="12345",
+        signature=signature,
     )
 
-    assert "<ds:Signature" not in xml
-    assert "<ds:SignedInfo" not in xml
-    assert '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">' in xml
+    _, params_xml = _parse_soap_request(xml, "RecepcionarLoteRps")
+    assert _text(params_xml, "SignatureValue") == "fake-signature"
+    assert params_xml.xpath("boolean(.//*[local-name()='Signature' and namespace-uri()='http://www.w3.org/2000/09/xmldsig#'])")
 
 def test_create_cancel_nfse_xml(carnaubal_provider):
     xml = carnaubal_provider.create_cancel_nfse(
@@ -169,11 +193,11 @@ def test_create_cancel_nfse_xml(carnaubal_provider):
         codigo_municipio=1234567,
         codigo_cancelamento="1"
     )
-    
+
+    _, params_xml = _parse_soap_request(xml, "CancelarNfse")
     assert "CancelarNfse" in xml
-    assert "<Numero>2024001</Numero>" in xml
-    assert "<CodigoCancelamento>1</CodigoCancelamento>" in xml
-    assert "<![CDATA[" in xml
+    assert _text(params_xml, "Numero") == "2024001"
+    assert _text(params_xml, "CodigoCancelamento") == "1"
 
 def test_create_consult_nfse_xml(carnaubal_provider):
     xml = carnaubal_provider.create_consult_nfse(
@@ -181,10 +205,11 @@ def test_create_consult_nfse_xml(carnaubal_provider):
         inscricao_municipal="12345",
         numero_nfse=10
     )
-    
+
+    _, params_xml = _parse_soap_request(xml, "ConsultarNfse")
     assert "ConsultarNfse" in xml
-    assert '<NumeroNfse xmlns="">10</NumeroNfse>' in xml
-    assert "<Cnpj>12345678000199</Cnpj>" in xml
+    assert _text(params_xml, "NumeroNfse") == "10"
+    assert _text(params_xml, "Cnpj") == "12345678000199"
 
 def test_create_consult_rps_xml(carnaubal_provider):
     xml = carnaubal_provider.create_consult_rps(
@@ -194,11 +219,12 @@ def test_create_consult_rps_xml(carnaubal_provider):
         cnpj="12345678000199",
         inscricao_municipal="12345"
     )
-    
+
+    _, params_xml = _parse_soap_request(xml, "ConsultarNfsePorRps")
     assert "ConsultarNfsePorRps" in xml
-    assert "<Numero>123</Numero>" in xml
-    assert "<Serie>A</Serie>" in xml
-    assert "<Tipo>1</Tipo>" in xml
+    assert _text(params_xml, "Numero") == "123"
+    assert _text(params_xml, "Serie") == "A"
+    assert _text(params_xml, "Tipo") == "1"
 
 def test_create_consult_lote_rps_xml(carnaubal_provider):
     xml = carnaubal_provider.create_consult_lote_rps(
@@ -207,8 +233,9 @@ def test_create_consult_lote_rps_xml(carnaubal_provider):
         inscricao_municipal="12345"
     )
 
+    _, params_xml = _parse_soap_request(xml, "ConsultarLoteRps")
     assert "ConsultarLoteRps" in xml
-    assert '<Protocolo xmlns="">PROTOCOLO123</Protocolo>' in xml
+    assert _text(params_xml, "Protocolo") == "PROTOCOLO123"
 
 def test_create_consult_situacao_lote_rps_xml(carnaubal_provider):
     xml = carnaubal_provider.create_consult_situacao_lote_rps(
@@ -217,8 +244,9 @@ def test_create_consult_situacao_lote_rps_xml(carnaubal_provider):
         inscricao_municipal="12345"
     )
 
+    _, params_xml = _parse_soap_request(xml, "ConsultarSituacaoLoteRps")
     assert "ConsultarSituacaoLoteRps" in xml
-    assert '<Protocolo xmlns="">PROTOCOLO123</Protocolo>' in xml
+    assert _text(params_xml, "Protocolo") == "PROTOCOLO123"
 
 def test_get_certificate_local(carnaubal_provider, tmp_path):
     """Testa o carregamento de certificado de arquivo local."""

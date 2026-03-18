@@ -1,0 +1,70 @@
+<p1:Rps>
+    <p1:InfRps Id="">
+        <p1:IdentificacaoRps>
+            <p1:Numero>{{rps.number}}</p1:Numero>
+            <p1:Serie>{{rps.serie}}</p1:Serie>
+            <p1:Tipo>1</p1:Tipo>
+        </p1:IdentificacaoRps>
+        <p1:DataEmissao>{{rps.date}}</p1:DataEmissao>
+        <p1:NaturezaOperacao>1</p1:NaturezaOperacao>
+        <p1:RegimeEspecialTributacao>6</p1:RegimeEspecialTributacao>
+        <p1:OptanteSimplesNacional>1</p1:OptanteSimplesNacional>
+        <p1:IncentivadorCultural>2</p1:IncentivadorCultural>
+
+        <p1:Status>1</p1:Status>
+        <p1:Servico>
+            <p1:Valores>
+                <p1:ValorServicos>{{rps.value}}</p1:ValorServicos>
+                <p1:ValorDeducoes>0.0</p1:ValorDeducoes>
+                <p1:ValorPis>0.0</p1:ValorPis>
+                <p1:ValorCofins>0.0</p1:ValorCofins>
+                <p1:ValorInss>0.0</p1:ValorInss>
+                <p1:ValorIr>0.0</p1:ValorIr>
+                <p1:ValorCsll>0.0</p1:ValorCsll>
+                <p1:IssRetido>2</p1:IssRetido>              
+                <p1:ValorIss>{{rps.iss}}</p1:ValorIss>
+                <p1:ValorIssRetido>0.0</p1:ValorIssRetido>
+                <p1:OutrasRetencoes>0.0</p1:OutrasRetencoes>
+                <p1:BaseCalculo>{{rps.value}}</p1:BaseCalculo>
+                <p1:Aliquota>{{rps.aliquota}}</p1:Aliquota>
+                <p1:ValorLiquidoNfse>{{rps.liquid_value}}</p1:ValorLiquidoNfse>
+                <p1:DescontoCondicionado>0.0</p1:DescontoCondicionado>
+                <p1:DescontoIncondicionado>0.0</p1:DescontoIncondicionado>
+            </p1:Valores>
+
+            <p1:ItemListaServico>106</p1:ItemListaServico>
+            <p1:CodigoCnae>6204000</p1:CodigoCnae>
+            <p1:CodigoTributacaoMunicipio>620400000</p1:CodigoTributacaoMunicipio>
+            <p1:Discriminacao>Recarga painel</p1:Discriminacao>
+            <p1:CodigoMunicipio>2303402</p1:CodigoMunicipio>
+        </p1:Servico>
+        <p1:Prestador>
+            <p1:Cnpj>40114832000153</p1:Cnpj>
+            <p1:InscricaoMunicipal>10759</p1:InscricaoMunicipal>
+        </p1:Prestador>
+        <p1:Tomador>
+            <p1:IdentificacaoTomador>
+                <p1:CpfCnpj>
+                    {% if rps.tomador.cpf_cnpf|length <=11 %}
+                        <p1:Cpf>{{rps.tomador.cpf_cnpf}}</p1:Cpf>
+                    {% else %}
+                        <p1:Cnpj>{{rps.tomador.cpf_cnpf}}</p1:Cnpj>
+                    {% endif %}
+                </p1:CpfCnpj>
+            </p1:IdentificacaoTomador>
+            <p1:RazaoSocial>{{rps.tomador.full_name}}</p1:RazaoSocial>
+            <p1:Endereco>
+                <p1:Endereco>{{rps.tomador.address}}</p1:Endereco>
+                <p1:Numero>{{rps.tomador.number}}</p1:Numero>
+                <p1:Complemento>casa</p1:Complemento>
+                <p1:Bairro>{{rps.tomador.district}}</p1:Bairro>
+                <p1:CodigoMunicipio>{{rps.tomador.ibge_code}}</p1:CodigoMunicipio>
+                <p1:Uf>{{rps.tomador.uf}}</p1:Uf>
+                <p1:Cep>{{rps.tomador.zip_code}}</p1:Cep>
+            </p1:Endereco>
+        
+        </p1:Tomador>
+
+    </p1:InfRps>
+    {% include 'signature.xml' %}
+</p1:Rps>

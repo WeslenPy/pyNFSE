@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime
+from lxml import etree
 from pynfse.src.integration.carnaubal.abrasf.models.base import CpfCnpj, Endereco, Contato
 from pynfse.src.integration.carnaubal.abrasf.models.rps import (
     Rps, InfRps, IdentificacaoRps, IdentificacaoPrestador, 
@@ -10,6 +11,10 @@ from pynfse.src.integration.carnaubal.abrasf.models.rps import (
     Destinatario, ControleIBSCBS, IBSCBS
 )
 from pynfse.src.integration.carnaubal.abrasf.models.lote import LoteRps, ListaRps
+
+
+def _parse_xml(xml: str) -> etree._Element:
+    return etree.fromstring(xml.encode("utf-8"))
 
 def test_rps_simples():
     """Cenário 1: RPS Básico (apenas campos obrigatórios)"""
@@ -286,9 +291,10 @@ def test_consultar_rps_xml():
     )
     
     xml = consulta.to_xml(pretty_print=True)
-    
-    assert "<ConsultarNfseRpsEnvio" in xml
-    assert "<IdentificacaoRps>" in xml
-    assert "<Numero>123</Numero>" in xml
-    assert "<Prestador>" in xml
-    assert "<Cnpj>12345678000199</Cnpj>" in xml
+
+    root = _parse_xml(xml)
+    assert root.tag == "ConsultarNfseRpsEnvio"
+    assert root.xpath("string(.//*[local-name()='Numero'][1])") == "123"
+    assert root.xpath("boolean(.//*[local-name()='IdentificacaoRps'])")
+    assert root.xpath("boolean(.//*[local-name()='Prestador'])")
+    assert root.xpath("string(.//*[local-name()='Cnpj'][1])") == "12345678000199"

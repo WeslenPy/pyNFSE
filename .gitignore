@@ -18,3 +18,5 @@ nf.xml
 *.p7f
 *.p7g
 speedgov.py
+*.pyc
+teste.xml

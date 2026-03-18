@@ -1,7 +1,9 @@
 from pynfse.src.common.xml_node import XMLNode
-from typing import Dict, Optional, List, Annotated
+from typing import ClassVar, Dict, Optional, List, Annotated
 from pydantic import Field, StringConstraints, conint, confloat, model_validator
 from lxml import etree
+TIPOS_V1_NS = "http://ws.speedgov.com.br/tipos_v1.xsd"
+
 # Tipos Simples Baseados no XSD (tipos_v1.xsd)
 
 # tsNumeroNfse, tsNumeroRps, tsNumeroLote (nonNegativeInteger, 15 digits)
@@ -97,18 +99,35 @@ tsCodigoCancelamentoNfse = Annotated[str, StringConstraints(min_length=1, max_le
 
 class ABRASFNode(XMLNode):
     """Classe base para nós do padrão ABRASF."""
-    def to_element(self, tag_name: Optional[str] = None, namespace: Optional[str] = None, nsmap: Optional[Dict[str, str]] = None) -> etree.Element:
-        return super().to_element(tag_name, namespace=namespace, nsmap=nsmap)
+    def to_element(
+        self,
+        tag_name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        nsmap: Optional[Dict[str, str]] = None,
+        child_namespace_override: Optional[str] = None,
+    ) -> etree.Element:
+        return super().to_element(
+            tag_name,
+            namespace=namespace,
+            nsmap=nsmap,
+            child_namespace_override=child_namespace_override,
+        )
 
-class MensagemRetorno(ABRASFNode):
+
+class ABRASFTypesNode(ABRASFNode):
+    """Nós do schema de tipos que herdam o namespace do elemento pai."""
+
+    xml_inherit_namespace_for_children: ClassVar[bool] = True
+
+class MensagemRetorno(ABRASFTypesNode):
     codigo: tsCodigoMensagemAlerta = Field(..., alias="Codigo")
     mensagem: tsDescricaoMensagemAlerta = Field(..., alias="Mensagem")
     correcao: Optional[tsDescricaoMensagemAlerta] = Field(None, alias="Correcao")
 
-class ListaMensagemRetorno(ABRASFNode):
+class ListaMensagemRetorno(ABRASFTypesNode):
     mensagem_retorno: List[MensagemRetorno] = Field(..., alias="MensagemRetorno")
 
-class CpfCnpj(ABRASFNode):
+class CpfCnpj(ABRASFTypesNode):
     cpf: Optional[tsCpf] = Field(None, alias="Cpf")
     cnpj: Optional[tsCnpj] = Field(None, alias="Cnpj")
 
@@ -118,7 +137,7 @@ class CpfCnpj(ABRASFNode):
             raise ValueError("CpfCnpj deve conter exatamente um entre Cpf ou Cnpj.")
         return self
 
-class Endereco(ABRASFNode):
+class Endereco(ABRASFTypesNode):
     endereco: Optional[Annotated[str, StringConstraints(max_length=125)]] = Field(None, alias="Endereco")
     numero: Optional[Annotated[str, StringConstraints(max_length=10)]] = Field(None, alias="Numero")
     complemento: Optional[Annotated[str, StringConstraints(max_length=60)]] = Field(None, alias="Complemento")
@@ -127,6 +146,6 @@ class Endereco(ABRASFNode):
     uf: Optional[tsUf] = Field(None, alias="Uf")
     cep: Optional[tsCep] = Field(None, alias="Cep")
 
-class Contato(ABRASFNode):
+class Contato(ABRASFTypesNode):
     telefone: Optional[tsTelefone] = Field(None, alias="Telefone")
     email: Optional[tsEmail] = Field(None, alias="Email")

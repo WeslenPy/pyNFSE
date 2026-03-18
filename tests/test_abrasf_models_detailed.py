@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, date
+from lxml import etree
 from pydantic import ValidationError
 from pynfse.src.integration.carnaubal.abrasf.models.rps import (
     Rps, InfRps, IdentificacaoRps, IdentificacaoPrestador, 
@@ -13,6 +14,14 @@ from pynfse.src.integration.carnaubal.abrasf.models.consulta import ConsultarNfs
 from pynfse.src.integration.carnaubal.abrasf.models.consultar_lote import ConsultarLoteRpsEnvio, ConsultarSituacaoLoteRpsEnvio
 from pynfse.src.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
 from pynfse.src.integration.carnaubal.abrasf.models.base import CpfCnpj
+
+
+def _parse_xml(xml: str) -> etree._Element:
+    return etree.fromstring(xml.encode("utf-8"))
+
+
+def _text(element: etree._Element, local_name: str) -> str:
+    return element.xpath(f"string(.//*[local-name()='{local_name}'][1])")
 
 def test_model_rps_validation():
     """Testa validações básicas do modelo RPS."""
@@ -90,10 +99,11 @@ def test_model_cancelamento_xml():
     )
     envio = CancelarNfseEnvio(pedido=pedido)
     xml = envio.to_xml()
-    
-    assert "<CancelarNfseEnvio" in xml
-    assert "<Numero>20241</Numero>" in xml
-    assert "<CodigoCancelamento>1</CodigoCancelamento>" in xml
+
+    root = _parse_xml(xml)
+    assert root.tag == "CancelarNfseEnvio"
+    assert _text(root, "Numero") == "20241"
+    assert _text(root, "CodigoCancelamento") == "1"
 
 def test_model_consulta_xml():
     """Testa a geração de XML para Consulta de NFSe."""
@@ -106,10 +116,11 @@ def test_model_consulta_xml():
         )
     )
     xml = consulta.to_xml()
-    
-    assert "<ConsultarNfseEnvio" in xml
-    assert "<NumeroNfse>10</NumeroNfse>" in xml
-    assert "<DataInicial>2024-01-01</DataInicial>" in xml
+
+    root = _parse_xml(xml)
+    assert root.tag == "ConsultarNfseEnvio"
+    assert _text(root, "NumeroNfse") == "10"
+    assert _text(root, "DataInicial") == "2024-01-01"
 
 def test_model_consultar_rps_xml():
     """Testa a geração de XML para Consulta por RPS."""
@@ -118,10 +129,11 @@ def test_model_consultar_rps_xml():
         prestador=IdentificacaoPrestador(cnpj="12345678000199", inscricao_municipal="12345")
     )
     xml = consulta.to_xml()
-    
-    assert "<ConsultarNfseRpsEnvio" in xml
-    assert "<Numero>123</Numero>" in xml
-    assert "<Cnpj>12345678000199</Cnpj>" in xml
+
+    root = _parse_xml(xml)
+    assert root.tag == "ConsultarNfseRpsEnvio"
+    assert _text(root, "Numero") == "123"
+    assert _text(root, "Cnpj") == "12345678000199"
 
 def test_model_consultar_lote_xml():
     consulta = ConsultarLoteRpsEnvio(
@@ -130,8 +142,9 @@ def test_model_consultar_lote_xml():
     )
     xml = consulta.to_xml()
 
-    assert "<ConsultarLoteRpsEnvio" in xml
-    assert "<Protocolo>PROTOCOLO123</Protocolo>" in xml
+    root = _parse_xml(xml)
+    assert root.tag == "ConsultarLoteRpsEnvio"
+    assert _text(root, "Protocolo") == "PROTOCOLO123"
 
 def test_model_consultar_situacao_lote_xml():
     consulta = ConsultarSituacaoLoteRpsEnvio(
@@ -140,8 +153,9 @@ def test_model_consultar_situacao_lote_xml():
     )
     xml = consulta.to_xml()
 
-    assert "<ConsultarSituacaoLoteRpsEnvio" in xml
-    assert "<Protocolo>PROTOCOLO123</Protocolo>" in xml
+    root = _parse_xml(xml)
+    assert root.tag == "ConsultarSituacaoLoteRpsEnvio"
+    assert _text(root, "Protocolo") == "PROTOCOLO123"
 
 def test_cpf_cnpj_validation():
     """Testa o modelo auxiliar CpfCnpj."""

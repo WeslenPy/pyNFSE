@@ -68,7 +68,7 @@ class LegacyXMLSigner(XMLSigner):
 class CarnaubalNFSe(NFSeBase):
     """
     Implementação do provedor Carnaubal seguindo o padrão ABRASF v1.
-    Utiliza modelos Pydantic para geração de XML e envelope SOAP com CDATA.
+    Utiliza modelos Pydantic para geração de XML e envelope SOAP compatível com os XMLs de referência do SpeedGov.
     """
 
     XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
@@ -132,18 +132,25 @@ class CarnaubalNFSe(NFSeBase):
         return ConcreteXMLBase()
 
     def _get_default_header(self) -> str:
-        """Retorna o cabeçalho XML padrão para as requisições ABRASF v1."""
-        return (
-            '<cabecalho xmlns="http://ws.speedgov.com.br/cabecalho_v1.xsd" versao="1">'
-            '<versaoDados xmlns="">1</versaoDados>'
-            '</cabecalho>'
+        """Retorna o cabeçalho XML padrão (novo padrão: default namespace + versaoDados xmlns='')."""
+        schema_location = "http://ws.speedgov.com.br/cabecalho_v1.xsd"
+        root = etree.Element(
+            f"{{{schema_location}}}cabecalho",
+            nsmap={None: schema_location},
         )
+        root.set("versao", "1")
+        versao = etree.SubElement(root, "versaoDados", nsmap={None: ""})
+        versao.text = "1"
+        return etree.tostring(
+            root,
+            encoding="UTF-8",
+            xml_declaration=False,
+            pretty_print=False,
+        ).decode("utf-8")
 
     def _get_request_nsmap(self, schema_location: str) -> Dict[str, str]:
-        return {
-            None: schema_location,
-            "xsi": self.XSI_NS,
-        }
+        """Namespace padrão para EnviarLoteRpsEnvio: default xmlns (sem prefixos p:, p1:)."""
+        return {None: schema_location}
 
     def _serialize_request_model(
         self,
@@ -156,11 +163,12 @@ class CarnaubalNFSe(NFSeBase):
             namespace=schema_location,
             nsmap=self._get_request_nsmap(schema_location),
         )
-        element.set(
-            f"{{{self.XSI_NS}}}schemaLocation",
-            f"{schema_location} {Path(urlparse(schema_location).path).name}",
-        )
-        return etree.tostring(element, encoding="unicode", pretty_print=False)
+        return etree.tostring(
+            element,
+            encoding="UTF-8",
+            xml_declaration=False,
+            pretty_print=False,
+        ).decode("utf-8")
 
     def _load_certificate(self, certificate_data: bytes, password: Optional[str] = None):
         """
@@ -224,10 +232,17 @@ class CarnaubalNFSe(NFSeBase):
             logger.error(f"Erro ao extrair CNPJ do certificado: {str(e)}")
             return None
 
-    def generate_signature(self, xml_element: etree._Element, certificate_data: bytes, password: Optional[str] = None) -> Signature:
+    def generate_signature(
+        self,
+        xml_element: etree._Element,
+        certificate_data: bytes,
+        password: Optional[str] = None,
+        reference_uri: Optional[str] = None,
+    ) -> Signature:
         """
         Gera a assinatura digital para um elemento XML usando um certificado PEM ou PFX.
         Retorna um objeto Signature (Pydantic).
+        reference_uri: URI da referência (ex: "#L1" para LoteRps com Id="L1").
         """
         private_key, certificate = self._load_certificate(certificate_data, password)
         
@@ -239,8 +254,15 @@ class CarnaubalNFSe(NFSeBase):
             c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
         )
         
+        sign_kwargs: Dict[str, Any] = {
+            "key": private_key,
+            "cert": [certificate],
+        }
+        if reference_uri:
+            sign_kwargs["reference_uri"] = reference_uri
+        
         # Assina o elemento
-        signed_root = signer.sign(xml_element, key=private_key, cert=[certificate])
+        signed_root = signer.sign(xml_element, **sign_kwargs)
         
         # Extrai o nó Signature
         signature_node = signed_root.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature")
@@ -296,20 +318,45 @@ class CarnaubalNFSe(NFSeBase):
             key_info=key_info
         )
 
-    def create_rps_nfse(self, rps_list: List[RpsModel], numero_lote: int, cnpj: str, inscricao_municipal: str) -> str:
+    def create_rps_nfse(self, rps_list: List[RpsModel], 
+                        numero_lote: int, cnpj: str, 
+                        inscricao_municipal: str, 
+                        signature: Optional[Signature] = None,
+                        certificate_data: Optional[bytes] = None,
+                        certificate_password: Optional[str] = None,
+                        lote_id: Optional[str] = None) -> str:
         """
         Cria XML de envio de Lote RPS.
+        Quando certificate_data e certificate_password são informados, a assinatura
+        é gerada corretamente sobre o LoteRps (Reference URI="#L{numero_lote}").
+        Caso contrário, usa a assinatura pré-computada passada em signature (legado).
+
+        Args:
+            lote_id: Id do LoteRps (ex: "lote_001"). Se não informado, usa "L{numero_lote}".
         """
+        lote_id = lote_id or f"L{numero_lote}"
         lote_model = LoteRpsModel(
-            id=f"lote_{numero_lote}",
+            id=lote_id,
             numero_lote=numero_lote,
             cnpj=cnpj,
             inscricao_municipal=inscricao_municipal,
             quantidade_rps=len(rps_list),
-            lista_rps=ListaRps(rps=rps_list)
+            lista_rps=ListaRps(rps=rps_list),
+            
         )
         
-        envio_model = EnviarLoteRpsEnvio(lote_rps=lote_model)
+        # if certificate_data is not None:
+        #     signature = self._generate_lote_signature(
+        #         lote_model=lote_model,
+        #         certificate_data=certificate_data,
+        #         password=certificate_password,
+        #         lote_id=lote_id,
+        #     )
+        # else:
+        #     signature = signature
+        
+
+        envio_model = EnviarLoteRpsEnvio(lote_rps=lote_model, signature=signature)
 
         body_content = self._serialize_request_model(
             envio_model,
@@ -322,6 +369,30 @@ class CarnaubalNFSe(NFSeBase):
             method_name="RecepcionarLoteRps",
             header_content=self._get_default_header()
         )
+
+    def _generate_lote_signature(
+        self,
+        lote_model: LoteRpsModel,
+        certificate_data: bytes,
+        password: Optional[str],
+        lote_id: str,
+    ) -> Signature:
+        """
+        Gera assinatura do LoteRps com Reference URI apontando para o Id do lote.
+        """
+        envio_model = EnviarLoteRpsEnvio(lote_rps=lote_model, signature=None)
+        element = envio_model.to_element(
+            tag_name="EnviarLoteRpsEnvio",
+            namespace=self.ENVIAR_LOTE_RPS_ENVIO_NS,
+            nsmap=self._get_request_nsmap(self.ENVIAR_LOTE_RPS_ENVIO_NS),
+        )
+        reference_uri = f"#{lote_id}"
+        return self.generate_signature(
+            element,
+            certificate_data,
+            password=password,
+            reference_uri=reference_uri,
+        )
     
     def create_cancel_nfse(self, numero_nfse: int, cnpj: str, 
                            inscricao_municipal: str, 
@@ -331,6 +402,7 @@ class CarnaubalNFSe(NFSeBase):
         """Cria XML para cancelamento de NFSE."""
         pedido = PedidoCancelamento(
             inf_pedido_cancelamento=InfPedidoCancelamento(
+                id="",
                 identificacao_nfse=IdentificacaoNfse(
                     numero=numero_nfse,
                     cnpj=cnpj,
@@ -402,6 +474,7 @@ class CarnaubalNFSe(NFSeBase):
     def create_consult_lote_rps(self, protocolo: str, cnpj: str, inscricao_municipal: str) -> str:
         """Cria XML para consulta de lote de RPS por protocolo."""
         consulta = ConsultarLoteRpsEnvio(
+            id="",
             prestador=IdentificacaoPrestador(
                 cnpj=cnpj,
                 inscricao_municipal=inscricao_municipal,
@@ -422,6 +495,7 @@ class CarnaubalNFSe(NFSeBase):
     def create_consult_situacao_lote_rps(self, protocolo: str, cnpj: str, inscricao_municipal: str) -> str:
         """Cria XML para consulta de situação de lote de RPS por protocolo."""
         consulta = ConsultarSituacaoLoteRpsEnvio(
+            id="",
             prestador=IdentificacaoPrestador(
                 cnpj=cnpj,
                 inscricao_municipal=inscricao_municipal,

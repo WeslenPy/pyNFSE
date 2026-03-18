@@ -1,0 +1,161 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfse="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">
+	<soapenv:Header />
+	<soapenv:Body>
+        <nfse:RecepcionarLoteRps>
+            <header>
+                <?xml version="1.0" encoding="UTF-8"?>
+
+                <p:cabecalho versao="1" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:p="http://ws.speedgov.com.br/cabecalho_v1.xsd" xmlns:p1="http://ws.speedgov.com.br/tipos_v1.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ws.speedgov.com.br/cabecalho_v1.xsd">
+                    <versaoDados>1</versaoDados>
+                </p:cabecalho>
+            </header> 
+            <parameters>
+                <?xml version="1.0" encoding="UTF-8"?>
+
+                <p:EnviarLoteRpsEnvio xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:p="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd" xmlns:p1="http://ws.speedgov.com.br/tipos_v1.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd">
+                    <p:LoteRps Id="">
+                        <p1:NumeroLote>{{lote.number}}</p1:NumeroLote>
+                        <p1:Cnpj>40114832000153</p1:Cnpj>
+                        <p1:InscricaoMunicipal>10759</p1:InscricaoMunicipal>
+                        <p1:QuantidadeRps>1</p1:QuantidadeRps>
+                        <p1:ListaRps><p1:Rps>
+                            <p1:InfRps Id="">
+                                <p1:IdentificacaoRps>
+                                    <p1:Numero>{{rps.number}}</p1:Numero>
+                                    <p1:Serie>{{rps.serie}}</p1:Serie>
+                                    <p1:Tipo>1</p1:Tipo>
+                                </p1:IdentificacaoRps>
+                                <p1:DataEmissao>{{rps.date}}</p1:DataEmissao>
+                                <p1:NaturezaOperacao>1</p1:NaturezaOperacao>
+                                <p1:RegimeEspecialTributacao>6</p1:RegimeEspecialTributacao>
+                                <p1:OptanteSimplesNacional>1</p1:OptanteSimplesNacional>
+                                <p1:IncentivadorCultural>2</p1:IncentivadorCultural>
+                        
+                                <p1:Status>1</p1:Status>
+                                <p1:Servico>
+                                    <p1:Valores>
+                                        <p1:ValorServicos>{{rps.value}}</p1:ValorServicos>
+                                        <p1:ValorDeducoes>0.0</p1:ValorDeducoes>
+                                        <p1:ValorPis>0.0</p1:ValorPis>
+                                        <p1:ValorCofins>0.0</p1:ValorCofins>
+                                        <p1:ValorInss>0.0</p1:ValorInss>
+                                        <p1:ValorIr>0.0</p1:ValorIr>
+                                        <p1:ValorCsll>0.0</p1:ValorCsll>
+                                        <p1:IssRetido>2</p1:IssRetido>              
+                                        <p1:ValorIss>{{rps.iss}}</p1:ValorIss>
+                                        <p1:ValorIssRetido>0.0</p1:ValorIssRetido>
+                                        <p1:OutrasRetencoes>0.0</p1:OutrasRetencoes>
+                                        <p1:BaseCalculo>{{rps.value}}</p1:BaseCalculo>
+                                        <p1:Aliquota>{{rps.aliquota}}</p1:Aliquota>
+                                        <p1:ValorLiquidoNfse>{{rps.liquid_value}}</p1:ValorLiquidoNfse>
+                                        <p1:DescontoCondicionado>0.0</p1:DescontoCondicionado>
+                                        <p1:DescontoIncondicionado>0.0</p1:DescontoIncondicionado>
+                                    </p1:Valores>
+                        
+                                    <p1:ItemListaServico>106</p1:ItemListaServico>
+                                    <p1:CodigoCnae>6204000</p1:CodigoCnae>
+                                    <p1:CodigoTributacaoMunicipio>620400000</p1:CodigoTributacaoMunicipio>
+                                    <p1:Discriminacao>Recarga painel</p1:Discriminacao>
+                                    <p1:CodigoMunicipio>2303402</p1:CodigoMunicipio>
+                                </p1:Servico>
+                                <p1:Prestador>
+                                    <p1:Cnpj>40114832000153</p1:Cnpj>
+                                    <p1:InscricaoMunicipal>10759</p1:InscricaoMunicipal>
+                                </p1:Prestador>
+                                <p1:Tomador>
+                                    <p1:IdentificacaoTomador>
+                                        <p1:CpfCnpj>
+                                            {% if rps.tomador.cpf_cnpf|length <=11 %}
+                                                <p1:Cpf>{{rps.tomador.cpf_cnpf}}</p1:Cpf>
+                                            {% else %}
+                                                <p1:Cnpj>{{rps.tomador.cpf_cnpf}}</p1:Cnpj>
+                                            {% endif %}
+                                        </p1:CpfCnpj>
+                                    </p1:IdentificacaoTomador>
+                                    <p1:RazaoSocial>{{rps.tomador.full_name}}</p1:RazaoSocial>
+                                    <p1:Endereco>
+                                        <p1:Endereco>{{rps.tomador.address}}</p1:Endereco>
+                                        <p1:Numero>{{rps.tomador.number}}</p1:Numero>
+                                        <p1:Complemento>casa</p1:Complemento>
+                                        <p1:Bairro>{{rps.tomador.district}}</p1:Bairro>
+                                        <p1:CodigoMunicipio>{{rps.tomador.ibge_code}}</p1:CodigoMunicipio>
+                                        <p1:Uf>{{rps.tomador.uf}}</p1:Uf>
+                                        <p1:Cep>{{rps.tomador.zip_code}}</p1:Cep>
+                                    </p1:Endereco>
+                                
+                                </p1:Tomador>
+                        
+                            </p1:InfRps>
+                            <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+                                <SignedInfo>
+                                    <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+                                    <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+                                    <Reference URI="">
+                                        <Transforms>
+                                            <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+                                            <Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+                                        </Transforms>
+                                        <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+                                        <DigestValue>
+                                            MU6FogUGj+bKbgA/9+FFTunVqB4=
+                                        </DigestValue>
+                                    </Reference>
+                                </SignedInfo>
+                                <SignatureValue>
+                                    NA6KjR7b74FVwEu3r6fx6Y1dolDyppVyzOxLKgDk3eW7B+QitSW1xT9z0ijmA9TX2YF4eAtp8AuDHKnZRyFdH7x1N6ssFMzzqW9t0hIn9rOnohtN4sTEZ/BgeoM3VoR3dYYQJx51ihm8G4x9Eth5idTYickl7id5QOsOhxmys6J9y5B8N07hBncILpm8PVr2VtlTsWtbtmuxZ8QwTfw4y1gYp+yBQXusfF70fkBUnJuBD3QRyRcBH8mK32BIYzaQX18z9TvXWhtliV9R8ckuWiqkCBOOtuxT106iPg9zb8J+mGAiPfIZmhqjQQBfOFPvvzQViQ9lW72jsHfkkiQblg==
+                                </SignatureValue>
+                                <KeyInfo>
+                                    <X509Data>
+                                        <X509Certificate>
+                                            MIIHQTCCBSmgAwIBAgIIJGMiECE/+twwDQYJKoZIhvcNAQELBQAwWTELMAkGA1UE
+                                            BhMCQlIxEzARBgNVBAoTCklDUC1CcmFzaWwxFTATBgNVBAsTDEFDIFNPTFVUSSB2
+                                            NTEeMBwGA1UEAxMVQUMgQ0VSVElGSUNBIE1JTkFTIHY1MB4XDTIyMTAyMTE0Mjgw
+                                            MFoXDTIzMTAyMTE0MjgwMFowgd0xCzAJBgNVBAYTAkJSMRMwEQYDVQQKEwpJQ1At
+                                            QnJhc2lsMQswCQYDVQQIEwJDRTESMBAGA1UEBxMJQ2FybmF1YmFsMR4wHAYDVQQL
+                                            ExVBQyBDRVJUSUZJQ0EgTUlOQVMgdjUxFzAVBgNVBAsTDjI3ODQyNDE3MDAwMTU4
+                                            MRkwFwYDVQQLExBWaWRlb2NvbmZlcmVuY2lhMRowGAYDVQQLExFDZXJ0aWZpY2Fk
+                                            byBQSiBBMTEoMCYGA1UEAxMfRiBLIEhJR0lOTyBCUklUTzo0MDExNDgzMjAwMDE1
+                                            MzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAL3g+OX5AKJ+kZv1cPIN
+                                            FO8nZKd66Kn5hHsA0rxUoIpOCT6rnoelyY+22O1f9v5DWrxC3wej4fT9vOtI/KaN
+                                            ZiCeqhAe2bfsQV2BBfDaAVh6SzSONu49bRmMp7+7AjZ287gHrqjR/JF0zGzloXa6
+                                            +1+5qfYQMu3B0NlGB6sDr3SqTgmvMcwDDojb4b/z3YfNxMwxOVPVLJXk7BoRd4UL
+                                            lI5IzY9XPo1DQT2FCLilWBDpJghn9OPgdfp23E0N7x+RHz2va6w17EoU14FFa3AK
+                                            h4tN7GpLurHc63RyhG5+8BEl7uXXAGdswSoADqWDZuq4gSWRXTLIOJE/Kxcwa7uK
+                                            hp8CAwEAAaOCAoYwggKCMB8GA1UdIwQYMBaAFD/TXKkZTdeIFi2YDK8K3uFPJBaw
+                                            MFkGCCsGAQUFBwEBBE0wSzBJBggrBgEFBQcwAoY9aHR0cDovL2NjZC5hY3NvbHV0
+                                            aS5jb20uYnIvbGNyL2FjLWNlcnRpZmljYW1pbmFzLXNtaW1lLXY1LnA3YjCBuAYD
+                                            VR0RBIGwMIGtgRRjb250YXRvQGtlbHJpLmNvbS5icqAnBgVgTAEDAqAeExxGUkFO
+                                            Q0lTQ08gS0VMUkkgSElHSU5PIEJSSVRPoBkGBWBMAQMDoBATDjQwMTE0ODMyMDAw
+                                            MTUzoDgGBWBMAQMEoC8TLTI5MDgxOTk0MDYxMDE0MjczOTAwMDAwMDAwMDAwMDAw
+                                            MDAwMDAwMDAwMDAwMKAXBgVgTAEDB6AOEwwwMDAwMDAwMDAwMDAwYgYDVR0gBFsw
+                                            WTBXBgZgTAECAWAwTTBLBggrBgEFBQcCARY/aHR0cDovL2NjZC5hY3NvbHV0aS5j
+                                            b20uYnIvZG9jcy9kcGMtYWMtY2VydGlmaWNhbWluYXMtc21pbWUucGRmMB0GA1Ud
+                                            JQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDCBlgYDVR0fBIGOMIGLMEOgQaA/hj1o
+                                            dHRwOi8vY2NkLmFjc29sdXRpLmNvbS5ici9sY3IvYWMtY2VydGlmaWNhbWluYXMt
+                                            c21pbWUtdjUuY3JsMESgQqBAhj5odHRwOi8vY2NkMi5hY3NvbHV0aS5jb20uYnIv
+                                            bGNyL2FjLWNlcnRpZmljYW1pbmFzLXNtaW1lLXY1LmNybDAdBgNVHQ4EFgQUNUaZ
+                                            mE83C4FYqWZxh3faQgOfI5EwDgYDVR0PAQH/BAQDAgXgMA0GCSqGSIb3DQEBCwUA
+                                            A4ICAQABIMTP9J5iaWXHJ+EfH0M+GahyAIbHdenYGYjIjrEMujO5IVByLA9eQnhu
+                                            2yJJpoXBh7eWhAEz+uFQok94PbXRLL33K+dJIFNyyqU0Ars646cT89ZRXi2drqGK
+                                            aETi179kR23S9f1wXvuf1ZAbQuVAgQtGnZRgWHpaO8iKwEisWQn9hr0n8YeI+KAA
+                                            aRJTYbraeW8lOaJZkCc/FoDBLUQmuNEvKNy3EAfggzBUk6F20YXhDX5tBBXCpbu7
+                                            sJc8XcToVThoSJZowAzBi/R2McuFu9hwYigKOzKAg/GI8uOCf+PJZqgEykbmIuiP
+                                            T7kwb9twzSkax2DL1hwgIeNUpKz96at4PusgJIj6ySl0DroY8DzPYHmGMrrKYB3F
+                                            mvmTert4mvgby16JimMqBUFxv3kL84NUPZ+7jVi8ALInDvH7Ut5Rg9n86Y30fplG
+                                            AYGunmL5XJeB4yzHENypJhpvnTyM5/C+F/ycKLiWfNbBF/ife9sc8f5ruGufiMDw
+                                            2NMtvIZd5+esyJwOrFjSbTW13gAcqEHpzyZA1MDxB/5yjjndb3zY2CCg5Q1MtWVe
+                                            ePZNOZYv1bxqLRb1r5PJMKHLSKl8mkAU/QkwBbekEptZ4SxNX9dCz/94sF3lFBZh
+                                            AMiHye5HKLBm3l2KxS9QFA0zq1k9hAnwZ8pACMmLjs9cmFoCtA==
+                                        </X509Certificate>
+                                    </X509Data>
+                                </KeyInfo>
+                            </Signature>
+                        </p1:Rps>  
+                    </p1:ListaRps>
+                    </p:LoteRps>
+                </p:EnviarLoteRpsEnvio>
+                
+            </parameters>
+        </nfse:RecepcionarLoteRps>
+	</soapenv:Body>
+</soapenv:Envelope>

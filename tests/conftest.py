@@ -129,7 +129,7 @@ def sample_info_rps(
         prestador=sample_provider_nfse,
         data_emissao=datetime(2024, 1, 15),
         natureza_operacao=1,
-        regime_special_tributation=6,
+        regime_especial_tributacao=6,
         optante_simples_national=1,
         incentivador_cultural=2,
         status=1

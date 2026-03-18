@@ -8,12 +8,24 @@ class SignatureNode(XMLNode):
     xml_attribute_aliases = {"Algorithm", "URI"}
     xml_inherit_namespace_for_children = True
 
-    def to_element(self, tag_name: Optional[str] = None, namespace: Optional[str] = "http://www.w3.org/2000/09/xmldsig#", nsmap: Optional[Dict[str, str]] = None) -> etree.Element:
-        if namespace is None:
-            namespace = "http://www.w3.org/2000/09/xmldsig#"
-        if tag_name == "Signature" and nsmap is None:
-            nsmap = {None: namespace}
-        return super().to_element(tag_name, namespace=namespace, nsmap=nsmap)
+    def to_element(
+        self,
+        tag_name: Optional[str] = None,
+        namespace: Optional[str] = "http://www.w3.org/2000/09/xmldsig#",
+        nsmap: Optional[Dict[str, str]] = None,
+        child_namespace_override: Optional[str] = None,
+    ) -> etree.Element:
+        # if namespace is None:
+        #     namespace =  "http://www.w3.org/2000/09/xmldsig#"
+        # # Garante que o elemento Signature sempre declare xmlns="http://www.w3.org/2000/09/xmldsig#"
+        # if tag_name == "Signature":
+        #     nsmap = {None: namespace}
+        return super().to_element(
+            tag_name,
+            namespace=namespace,
+            nsmap=nsmap,
+            child_namespace_override=child_namespace_override,
+        )
 
 class CanonicalizationMethod(SignatureNode):
     algorithm: str = Field(..., alias="Algorithm")

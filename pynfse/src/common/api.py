@@ -10,6 +10,8 @@ from pynfse.src.common.response import ResponseNFSE
 from pynfse.src.common.xml import XMLBase
 from loguru import logger
 
+from bs4 import BeautifulSoup
+
 T = TypeVar("T", bound=BaseModel)
 
 class NFSeBase:
@@ -27,10 +29,36 @@ class NFSeBase:
 
     def get_xml_base(self)->XMLBase:
         return XMLBase()
+    
+    def render(self,xml:str)->str:
+        logger.info("Render do XML")
+        return self.parse(xml.replace('\n',''))
+
+    def parse(self,xml:str)->str:
+        logger.info("Parse de XML")
+
+        # soup = BeautifulSoup(xml, 'lxml-xml')
+        # header = soup.header
+        # content = header.decode_contents()
+        # soup.header.clear()
+        # soup.header.append(content)
+        # parameters = soup.parameters
+        # content_parameters = parameters.decode_contents()
+        # soup.parameters.clear()
+        # soup.parameters.append(content_parameters)
+        xml = xml.replace(' &lt;','&lt;')
+        return xml
+
 
 
     def send(self, xml: str)->ResponseNFSE:
         """Send the RPS to the NFSe"""
+        
+        # xml = self.render(xml)
+        
+        # xml = xml.replace("ds:", "")
+        
+        logger.debug(xml)
         
         response = self.session.post(url= self.URL,  data=xml)
 

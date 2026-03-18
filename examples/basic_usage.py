@@ -91,7 +91,7 @@ def exemplo_criar_nfse_basica():
         services=servico,
         provider=prestador,
         date=date.today()
-        # nature_of_operation, regime_special_tributation, etc. têm valores padrão
+        # nature_of_operation, regime_especial_tributacao, etc. têm valores padrão
     )
     
     print("NFSE criada com sucesso!")
@@ -177,7 +177,7 @@ def exemplo_criar_nfse_completa():
         provider=prestador,
         date=date(2024, 1, 15),
         nature_of_operation=1,  # 1 = Tributação no município
-        regime_special_tributation=6,  # 6 = Regime especial
+        regime_especial_tributacao=6,  # 6 = Regime especial
         optant_simple_national=1,  # 1 = Sim, 2 = Não
         incentivator_cultural=2,  # 2 = Não
         status=1  # 1 = Normal
