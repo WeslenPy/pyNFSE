@@ -3,11 +3,21 @@ Modelos RPS para SpeedGov - estrutura enviar_lote_rps.xml.
 Inclui blocos opcionais NFS-e Nacional (DadosDPS, DadosObra, ComercioExterior, etc).
 """
 from datetime import datetime, date
-from typing import Optional
+from decimal import Decimal
+from typing import Annotated, Optional, Union
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from pynfse.src.integration.carnaubal.abrasf.models.rps import IdentificacaoOrgaoGerador
 from pynfse.src.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco
+from pynfse.src.integration.carnaubal.speedgov.enums import (
+    TipoEmissaoDPS,
+    TipoAmbiente,
+    TributacaoIssqn,
+    TipoRetencaoIssqn,
+    OptanteSimplesNacionalDPS,
+    RegimeApuracaoTributosSN,
+)
 from pynfse.src.common.signature import Signature
 
 
@@ -15,21 +25,29 @@ from pynfse.src.common.signature import Signature
 
 
 class DadosDPS(BaseModel):
-    """Dados da Declaração de Prestação de Serviços - NFS-e Nacional."""
+    """
+    Dados da Declaração de Prestação de Serviços - NFS-e Nacional.
+    Campos de escolha usam enums: TipoEmissaoDPS, TipoAmbiente, TributacaoIssqn,
+    TipoRetencaoIssqn, OptanteSimplesNacionalDPS, RegimeApuracaoTributosSN.
+    """
     model_config = ConfigDict(populate_by_name=True)
 
-    tp_emit: Optional[str] = Field(None, alias="TpEmit", max_length=1)# tipo de emissão
-    tp_amb: Optional[int] = Field(None, alias="TpAmb")# tipo de ambiente
-    dh_emi: Optional[datetime] = Field(None, alias="DhEmi")# data e hora de emissão
-    ver_aplic: Optional[str] = Field(None, alias="VerAplic", max_length=20)# versão do aplicativo
-    cloc_emi: Optional[int] = Field(None, alias="CLocEmi")# código do local de emissão
-    cloc_prestacao: Optional[int] = Field(None, alias="CLocPrestacao")# código do local de prestação
-    ctrib_nac: Optional[str] = Field(None, alias="CTribNac", max_length=6)# código tributação nacional
-    trib_issqn: Optional[int] = Field(None, alias="TribIssqn")# tributação ISSQN
-    tp_ret_issqn: Optional[int] = Field(None, alias="TpRetIssqn")# tipo de retenção ISSQN
-    op_simp_nac: Optional[str] = Field(None, alias="OpSimpNac", max_length=1)# operação simples nacional
-    reg_esp_trib: Optional[str] = Field(None, alias="RegEspTrib", max_length=10)# regime especial de tributação
-    reg_ap_trib_sn: Optional[str] = Field(None, alias="RegApTribSN", max_length=1)# regime apuracional de tributação SN
+    tp_emit: Optional[Union[TipoEmissaoDPS, int]] = Field(None, alias="TpEmit", description="TipoEmissaoDPS: 1=Prestador, 2=Tomador")
+    tp_amb: Optional[Union[TipoAmbiente, int]] = Field(None, alias="TpAmb", description="TipoAmbiente: 1=Produção, 2=Homologação")
+    dh_emi: Optional[datetime] = Field(None, alias="DhEmi")
+    ver_aplic: Optional[str] = Field(None, alias="VerAplic", max_length=20)
+    cloc_emi: Optional[Union[int, str]] = Field(None, alias="CLocEmi")
+    cloc_prestacao: Optional[Union[int, str]] = Field(None, alias="CLocPrestacao")
+    ctrib_nac: Optional[str] = Field(None, alias="CTribNac", max_length=6)
+    trib_issqn: Optional[Union[TributacaoIssqn, int]] = Field(None, alias="TribIssqn", description="TributacaoIssqn: 1=Normal, 2=Imune, 3=Isento, 4=Exportação")
+    tp_ret_issqn: Optional[Union[TipoRetencaoIssqn, int]] = Field(None, alias="TpRetIssqn", description="TipoRetencaoIssqn: 1=Não retido, 2=Tomador, 3=Intermediário")
+    op_simp_nac: Optional[Union[OptanteSimplesNacionalDPS, int]] = Field(None, alias="OpSimpNac", description="OptanteSimplesNacionalDPS: 1=Não optante, 2=ME/EPP, 3=MEI")
+    reg_esp_trib: Optional[str] = Field(None, alias="RegEspTrib", max_length=10)
+    reg_ap_trib_sn: Optional[Union[RegimeApuracaoTributosSN, int]] = Field(None, alias="RegApTribSN", description="RegimeApuracaoTributosSN: 1=Fed+Mun SN, 2=Fed SN+ISSQN NFSe, 3=Fed+Mun NFSe")
+
+    serie: Optional[int] = Field(None, alias="serie")
+    numero_dps: Optional[int] = Field(None, alias="nDPS")
+    data_competencia: Optional[datetime] = Field(None, alias="dCompet")
 
 
 class EnderecoObra(BaseModel):
@@ -56,7 +74,7 @@ class ComercioExterior(BaseModel):
     """Comércio exterior - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
-    md_prestacao: Optional[int] = Field(None, alias="MdPrestacao")# modalidade de prestação
+    md_prestacao: Optional[int] = Field(None, alias="MdPrestacao", description="Use ModalidadePrestacao")
     vinc_prest: Optional[int] = Field(None, alias="VincPrest")# vinculação da prestação
     tp_moeda: Optional[int] = Field(None, alias="TpMoeda")# tipo de moeda
     v_serv_moeda: Optional[float] = Field(None, alias="VServMoeda")# valor do serviço em moeda
@@ -70,10 +88,10 @@ class ComercioExterior(BaseModel):
 
 
 class ExigibilidadeSuspensa(BaseModel):
-    """Exigibilidade suspensa - NFS-e Nacional."""
+    """Exigibilidade suspensa - NFS-e Nacional. Use TipoExigibilidadeSuspensa para tp_susp."""
     model_config = ConfigDict(populate_by_name=True)
 
-    tp_susp: Optional[int] = Field(None, alias="TpSusp")# tipo de suspensão
+    tp_susp: Optional[int] = Field(None, alias="TpSusp", description="Use TipoExigibilidadeSuspensa")
     n_processo: Optional[str] = Field(None, alias="NProcesso", max_length=30)# número do processo
 
 
@@ -118,14 +136,14 @@ class Destinatario(BaseModel):
 
 
 class ControleIBSCBS(BaseModel):
-    """Controle IBS/CBS - NFS-e Nacional."""
+    """Controle IBS/CBS - NFS-e Nacional. Use FinalidadeNFSe, IndicadorFinal, IndicadorDestino."""
     model_config = ConfigDict(populate_by_name=True)
 
-    fin_nfse: Optional[int] = Field(None, alias="FinNFSe")# finalidade da NFSE
-    ind_final: Optional[int] = Field(None, alias="IndFinal")# indicador final
+    fin_nfse: Optional[int] = Field(None, alias="FinNFSe", description="Use FinalidadeNFSe")
+    ind_final: Optional[int] = Field(None, alias="IndFinal", description="Use IndicadorFinal")
     tp_oper: Optional[int] = Field(None, alias="TpOper")# tipo de operação
     tp_ente_gov: Optional[int] = Field(None, alias="TpEnteGov")# tipo de ente governamental
-    ind_dest: Optional[int] = Field(None, alias="IndDest")# indicador de destino
+    ind_dest: Optional[int] = Field(None, alias="IndDest", description="Use IndicadorDestino")
     c_ind_op: Optional[str] = Field(None, alias="CIndOp", max_length=6)# código do indicador de operação
     x_tp_ente_gov: Optional[str] = Field(None, alias="XTpEnteGov", max_length=2000)# descrição do tipo de ente governamental
 
@@ -134,43 +152,136 @@ class IBSCBS(BaseModel):
     """IBS/CBS - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
-    ibscbs_base_calculo: Optional[float] = Field(None, alias="IBSCBSBaseCalculo")# base de cálculo do IBS/CBS
-    ibsu_f_aliquota: Optional[float] = Field(None, alias="IBSUFAliquota")# aliquota do IBS/CBS
-    ib_mun_aliquota: Optional[float] = Field(None, alias="IBSMunAliquota")# aliquota do IBS/CBS
-    cbs_aliquota: Optional[float] = Field(None, alias="CBSAliquota")# aliquota do CBS
-    ibsu_f_valor: Optional[float] = Field(None, alias="IBSUFValor")# valor do IBS/CBS
-    ibs_mun_valor: Optional[float] = Field(None, alias="IBSMunValor")# valor do IBS/CBS
-    cbs_valor: Optional[float] = Field(None, alias="CBSValor")# valor do CBS
-    ibsu_f_perc_reducao: Optional[float] = Field(None, alias="IBSUFPercReducao")# percentual de redução do IBS/CBS
-    ibs_mun_perc_reducao: Optional[float] = Field(None, alias="IBSMunPercReducao")# percentual de redução do IBS/CBS
-    cbs_perc_reducao: Optional[float] = Field(None, alias="CBSPercReducao")# percentual de redução do CBS
-    ibsu_f_aliquota_efetiva: Optional[float] = Field(None, alias="IBSUFAliquotaEfetiva")# aliquota efetiva do IBS/CBS
-    ibs_mun_aliquota_efetiva: Optional[float] = Field(None, alias="IBSMunAliquotaEfetiva")# aliquota efetiva do IBS/CBS
-    cbs_aliquota_efetiva: Optional[float] = Field(None, alias="CBSAliquotaEfetiva")# aliquota efetiva do CBS
-    ibsu_f_perc_diferimento: Optional[float] = Field(None, alias="IBSUFPercDiferimento")# percentual de diferimento do IBS/CBS
-    ibs_mun_perc_diferimento: Optional[float] = Field(None, alias="IBSMunPercDiferimento")# percentual de diferimento do IBS/CBS
-    cbs_perc_diferimento: Optional[float] = Field(None, alias="CBSPercDiferimento")# percentual de diferimento do CBS
-    ibsu_f_valor_diferido: Optional[float] = Field(None, alias="IBSUFValorDiferido")# valor diferido do IBS/CBS
-    ibs_mun_valor_diferido: Optional[float] = Field(None, alias="IBSMunValorDiferido")# valor diferido do IBS/CBS
-    cbs_valor_diferido: Optional[float] = Field(None, alias="CBSValorDiferido")# valor diferido do CBS
-    ibs_credito_presumido_aliq: Optional[float] = Field(None, alias="IBSCreditoPresumidoAliq")# crédito presumido do IBS/CBS
-    ibs_credito_presumido_valor: Optional[float] = Field(None, alias="IBSCreditoPresumidoValor")# crédito presumido do IBS/CBS
-    cbs_credito_presumido_aliq: Optional[float] = Field(None, alias="CBSCreditoPresumidoAliq")# crédito presumido do CBS
-    cbs_credito_presumido_valor: Optional[float] = Field(None, alias="CBSCreditoPresumidoValor")# crédito presumido do CBS
-    ibs_valor_total: Optional[float] = Field(None, alias="IBSValorTotal")# valor total do IBS/CBS
-    valor_total_com_tributos: Optional[float] = Field(None, alias="ValorTotalComTributos")# valor total com tributos do IBS/CBS
-    ibs_valor_reembolso: Optional[float] = Field(None, alias="IBSValorReembolso")# valor do reembolso do IBS/CBS
-    localidade_incidencia_cod: Optional[int] = Field(None, alias="LocalidadeIncidenciaCod")# código da localidade de incidência do IBS/CBS
-    localidade_incidencia_nome: Optional[str] = Field(None, alias="LocalidadeIncidenciaNome", max_length=2000)# nome da localidade de incidência do IBS/CBS
-    perc_redutor_compra_gov: Optional[float] = Field(None, alias="PercRedutorCompraGov")# percentual de redutor de compra governamental do IBS/CBS
+    ibscbs_base_calculo: Optional[Decimal] = Field(None, alias="IBSCBSBaseCalculo")
+
+    ibsu_f_aliquota: Optional[Decimal] = Field(None, alias="IBSUFAliquota")
+    ib_mun_aliquota: Optional[Decimal] = Field(None, alias="IBSMunAliquota")
+    cbs_aliquota: Optional[Decimal] = Field(None, alias="CBSAliquota")
+
+    ibsu_f_valor: Optional[Decimal] = Field(None, alias="IBSUFValor")
+    ibs_mun_valor: Optional[Decimal] = Field(None, alias="IBSMunValor")
+    cbs_valor: Optional[Decimal] = Field(None, alias="CBSValor")
+
+    ibsu_f_perc_reducao: Optional[Decimal] = Field(None, alias="IBSUFPercReducao")
+    ibs_mun_perc_reducao: Optional[Decimal] = Field(None, alias="IBSMunPercReducao")
+    cbs_perc_reducao: Optional[Decimal] = Field(None, alias="CBSPercReducao")
+
+    ibsu_f_aliquota_efetiva: Optional[Decimal] = Field(None, alias="IBSUFAliquotaEfetiva")
+    ibs_mun_aliquota_efetiva: Optional[Decimal] = Field(None, alias="IBSMunAliquotaEfetiva")
+    cbs_aliquota_efetiva: Optional[Decimal] = Field(None, alias="CBSAliquotaEfetiva")
+
+    ibsu_f_perc_diferimento: Optional[Decimal] = Field(None, alias="IBSUFPercDiferimento")
+    ibs_mun_perc_diferimento: Optional[Decimal] = Field(None, alias="IBSMunPercDiferimento")
+    cbs_perc_diferimento: Optional[Decimal] = Field(None, alias="CBSPercDiferimento")
+
+    ibsu_f_valor_diferido: Optional[Decimal] = Field(None, alias="IBSUFValorDiferido")
+    ibs_mun_valor_diferido: Optional[Decimal] = Field(None, alias="IBSMunValorDiferido")
+    cbs_valor_diferido: Optional[Decimal] = Field(None, alias="CBSValorDiferido")
+
+    ibs_credito_presumido_aliq: Optional[Decimal] = Field(None, alias="IBSCreditoPresumidoAliq")
+    ibs_credito_presumido_valor: Optional[Decimal] = Field(None, alias="IBSCreditoPresumidoValor")
+    cbs_credito_presumido_aliq: Optional[Decimal] = Field(None, alias="CBSCreditoPresumidoAliq")
+    cbs_credito_presumido_valor: Optional[Decimal] = Field(None, alias="CBSCreditoPresumidoValor")
+
+    ibs_valor_total: Optional[Decimal] = Field(None, alias="IBSValorTotal")
+    valor_total_com_tributos: Optional[Decimal] = Field(None, alias="ValorTotalComTributos")
+
+    ibs_valor_reembolso: Optional[Decimal] = Field(None, alias="IBSValorReembolso")
+
+    localidade_incidencia_cod: Optional[str] = Field(None, alias="LocalidadeIncidenciaCod")
+    localidade_incidencia_nome: Optional[Annotated[str, ...]] = Field(None, alias="LocalidadeIncidenciaNome")
+
+    perc_redutor_compra_gov: Optional[Decimal] = Field(None, alias="PercRedutorCompraGov")
 
 
+
+    # @model_validator(mode="after")
+    # def calcular_campos(self):
+    #     base = self.ibscbs_base_calculo or Decimal(0)
+
+    #     def calc_aliquota_efetiva(aliq, red):
+    #         if aliq is None:
+    #             return None
+    #         red = red or Decimal(0)
+    #         return aliq * (Decimal(1) - red)
+
+    #     def calc_valor(base, aliq_efetiva):
+    #         if base is None or aliq_efetiva is None:
+    #             return None
+    #         return base * aliq_efetiva
+
+    #     def calc_diferido(valor, perc):
+    #         if valor is None or perc is None:
+    #             return None
+    #         return valor * perc
+
+    #     # ALÍQUOTAS EFETIVAS 
+    #     if self.ibsu_f_aliquota_efetiva is None:
+    #         self.ibsu_f_aliquota_efetiva = calc_aliquota_efetiva(
+    #             self.ibsu_f_aliquota, self.ibsu_f_perc_reducao
+    #         )
+
+    #     if self.ibs_mun_aliquota_efetiva is None:
+    #         self.ibs_mun_aliquota_efetiva = calc_aliquota_efetiva(
+    #             self.ib_mun_aliquota, self.ibs_mun_perc_reducao
+    #         )
+
+    #     if self.cbs_aliquota_efetiva is None:
+    #         self.cbs_aliquota_efetiva = calc_aliquota_efetiva(
+    #             self.cbs_aliquota, self.cbs_perc_reducao
+    #         )
+
+    #     # VALORES 
+    #     if self.ibsu_f_valor is None:
+    #         self.ibsu_f_valor = calc_valor(base, self.ibsu_f_aliquota_efetiva)
+
+    #     if self.ibs_mun_valor is None:
+    #         self.ibs_mun_valor = calc_valor(base, self.ibs_mun_aliquota_efetiva)
+
+    #     if self.cbs_valor is None:
+    #         self.cbs_valor = calc_valor(base, self.cbs_aliquota_efetiva)
+
+    #     #DIFERIDOS
+    #     if self.ibsu_f_valor_diferido is None:
+    #         self.ibsu_f_valor_diferido = calc_diferido(
+    #             self.ibsu_f_valor, self.ibsu_f_perc_diferimento
+    #         )
+
+    #     if self.ibs_mun_valor_diferido is None:
+    #         self.ibs_mun_valor_diferido = calc_diferido(
+    #             self.ibs_mun_valor, self.ibs_mun_perc_diferimento
+    #         )
+
+    #     if self.cbs_valor_diferido is None:
+    #         self.cbs_valor_diferido = calc_diferido(
+    #             self.cbs_valor, self.cbs_perc_diferimento
+    #         )
+
+    #     #TOTAL IBS
+    #     if self.ibs_valor_total is None:
+    #         self.ibs_valor_total = (self.ibsu_f_valor or 0) + (self.ibs_mun_valor or 0)
+
+    #     # TOTAL COM TRIBUTOS
+    #     if self.valor_total_com_tributos is None:
+    #         self.valor_total_com_tributos = (
+    #             base
+    #             + (self.ibs_valor_total or 0)
+    #             + (self.cbs_valor or 0)
+    #         )
+
+    #     return self
+    
+    
 class IdentificacaoRps(BaseModel):
+    """
+    Identificação do RPS.
+    Para tipo, use o enum TipoRps (ex: TipoRps.RPS) ou int 1|2|3.
+    """
     model_config = ConfigDict(populate_by_name=True)
 
-    numero: int = Field(..., alias="Numero", ge=0)# número do RPS
-    serie: str = Field(..., alias="Serie", min_length=1, max_length=5)# série do RPS
-    tipo: int = Field(..., alias="Tipo", ge=1, le=3)# tipo do RPS
+    numero: int = Field(..., alias="Numero", ge=0, description="Número do RPS")
+    serie: str = Field(..., alias="Serie", min_length=1, max_length=5, description="Série do RPS")
+    tipo: int = Field(..., alias="Tipo", ge=1, le=3, description="Tipo: use TipoRps (RPS=1, NOTA_FISCAL_CONJUGADA_CUPOM=2, CUPOM=3)")
 
 
 class IdentificacaoPrestador(BaseModel):
@@ -197,7 +308,7 @@ class Valores(BaseModel):
     valor_inss: float = Field(0, alias="ValorInss", ge=0)# valor do INSS
     valor_ir: float = Field(0, alias="ValorIr", ge=0)# valor do IR
     valor_csll: float = Field(0, alias="ValorCsll", ge=0)# valor do CSLL
-    iss_retido: int = Field(2, alias="IssRetido", ge=1, le=2)# ISS retido
+    iss_retido: int = Field(2, alias="IssRetido", ge=1, le=2, description="Use IssRetido (SIM=1, NAO=2)")
     valor_iss: float = Field(..., alias="ValorIss", ge=0)# valor do ISS
     valor_iss_retido: float = Field(0, alias="ValorIssRetido", ge=0)# valor do ISS retido
     outras_retencoes: float = Field(0, alias="OutrasRetencoes", ge=0)# outras retenções
@@ -206,7 +317,17 @@ class Valores(BaseModel):
     valor_liquido_nfse: float = Field(..., alias="ValorLiquidoNfse", ge=0)# valor líquido da NFSE
     desconto_condicionado: float = Field(0, alias="DescontoCondicionado", ge=0)
     desconto_incondicionado: float = Field(0, alias="DescontoIncondicionado", ge=0)# desconto incondicionado
-
+    
+    cstp_pis_cofins: float = Field(0, alias="CSTPisCofins", ge=0)# desconto incondicionado
+    base_calculo_pis_cofins: float = Field(0, alias="BaseCalculoPisCofins", ge=0)# desconto incondicionado
+    tipo_retencao_pis_cofins: float = Field(0, alias="TipoRetencaoPisCofins", ge=0)# desconto incondicionado
+    
+    aliq_pis: float = Field(0, alias="AliqPis", ge=0)
+    aliq_cofins: float = Field(0, alias="AliqCofins", ge=0)
+    
+    p_tot_trib_fed: float = Field(0, alias="pTotTribFed", ge=0)
+    p_tot_trib_est: float = Field(0, alias="pTotTribEst", ge=0)
+    p_tot_trib_mun: float = Field(0, alias="pTotTribMun", ge=0)
 
 class DadosServico(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -229,21 +350,25 @@ class DadosTomador(BaseModel):
 
 
 class InfRps(BaseModel):
-    """InfRps - campos base + blocos opcionais NFS-e Nacional."""
+    """
+    InfRps - campos base + blocos opcionais NFS-e Nacional.
+    Use os enums para campos de escolha: NaturezaOperacao, RegimeEspecialTributacao,
+    SimNao, StatusRps.
+    """
     model_config = ConfigDict(populate_by_name=True)
 
-    id: Optional[str] = Field("", alias="Id")# id do RPS
-    identificacao_rps: IdentificacaoRps = Field(..., alias="IdentificacaoRps")# identificacao do RPS
-    data_emissao: datetime = Field(..., alias="DataEmissao")# data de emissão do RPS
-    natureza_operacao: int = Field(1, alias="NaturezaOperacao", ge=1, le=6)# natureza da operação
-    regime_especial_tributacao: int = Field(..., alias="RegimeEspecialTributacao", ge=1, le=6)# regime especial de tributação
-    optante_simples_nacional: int = Field(..., alias="OptanteSimplesNacional", ge=1, le=2)# optante simples nacional
-    incentivador_cultural: int = Field(2, alias="IncentivadorCultural", ge=1, le=2)# incentivador cultural
-    status: int = Field(1, alias="Status", ge=1, le=2)# status do RPS
+    id: Optional[str] = Field("", alias="Id")
+    identificacao_rps: IdentificacaoRps = Field(..., alias="IdentificacaoRps")
+    data_emissao: datetime = Field(..., alias="DataEmissao")
+    natureza_operacao: int = Field(1, alias="NaturezaOperacao", ge=1, le=6, description="Use NaturezaOperacao")
+    regime_especial_tributacao: int = Field(..., alias="RegimeEspecialTributacao", ge=1, le=6, description="Use RegimeEspecialTributacao")
+    optante_simples_nacional: int = Field(..., alias="OptanteSimplesNacional", ge=1, le=2, description="Use SimNao")
+    incentivador_cultural: int = Field(2, alias="IncentivadorCultural", ge=1, le=2, description="Use SimNao")
+    status: int = Field(1, alias="Status", ge=1, le=2, description="Use StatusRps")
     servico: DadosServico = Field(..., alias="Servico")# dados do serviço
     prestador: IdentificacaoPrestador = Field(..., alias="Prestador")# identificacao do prestador
     tomador: DadosTomador = Field(..., alias="Tomador")# dados do tomador
-
+    
     # Blocos NFS-e Nacional encapsulados
     dados_dps: Optional[DadosDPS] = Field(None, alias="DadosDPS") # prestação de serviços
     dados_obra: Optional[DadosObra] = Field(None, alias="DadosObra") # obra

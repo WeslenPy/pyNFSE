@@ -8,9 +8,9 @@ from pynfse.src.integration.carnaubal.speedgov import SpeedGovNFSe
 
 def main():
     URL_HOMOLOGACAO = "http://speedgov.com.br:80/wsmod/Nfes?wsdl"
-    cnpj = "40114832000153"
-    inscricao_municipal = "10759"
-    codigo_municipio = 2303402  # Carnaubal/CE (IBGE)
+    cnpj = "57255426000103"
+    inscricao_municipal = "1"
+    codigo_municipio = 1  
     numero_nfse = 123
     codigo_cancelamento = "E12"  # Ex: E12 = Erro na emissão
 

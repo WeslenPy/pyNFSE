@@ -19,10 +19,14 @@ XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 
 
 def _format_value(v) -> str:
+    from enum import Enum
+
     if isinstance(v, datetime):
         return v.strftime("%Y-%m-%dT%H:%M:%S")
     if isinstance(v, date):
         return v.isoformat()
+    if isinstance(v, Enum):
+        return str(v.value)
     return str(v)
 
 

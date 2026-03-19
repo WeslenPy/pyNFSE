@@ -3,6 +3,26 @@ Integração SpeedGov - NFS-e conforme enviar_lote_rps.xml.
 Estrutura própria: prefixos p:/p1:, RPS simplificado (sem blocos ABRASF opcionais).
 """
 from pynfse.src.integration.carnaubal.speedgov.nfse import SpeedGovNFSe, DEFAULT_SPEEDGOV_URL
+from pynfse.src.integration.carnaubal.speedgov.enums import (
+    TipoRps,
+    NaturezaOperacao,
+    RegimeEspecialTributacao,
+    SimNao,
+    StatusRps,
+    IssRetido,
+    SituacaoLoteRps,
+    TipoEmissaoDPS,
+    TipoAmbiente,
+    TributacaoIssqn,
+    TipoRetencaoIssqn,
+    OptanteSimplesNacionalDPS,
+    RegimeApuracaoTributosSN,
+    ModalidadePrestacao,
+    TipoExigibilidadeSuspensa,
+    FinalidadeNFSe,
+    IndicadorFinal,
+    IndicadorDestino,
+)
 from pynfse.src.integration.carnaubal.speedgov.models import (
     Rps,
     InfRps,
@@ -26,6 +46,24 @@ from pynfse.src.integration.carnaubal.speedgov.models import (
 )
 
 __all__ = [
+    "TipoRps",
+    "NaturezaOperacao",
+    "RegimeEspecialTributacao",
+    "SimNao",
+    "StatusRps",
+    "IssRetido",
+    "SituacaoLoteRps",
+    "TipoEmissaoDPS",
+    "TipoAmbiente",
+    "TributacaoIssqn",
+    "TipoRetencaoIssqn",
+    "OptanteSimplesNacionalDPS",
+    "RegimeApuracaoTributosSN",
+    "ModalidadePrestacao",
+    "TipoExigibilidadeSuspensa",
+    "FinalidadeNFSe",
+    "IndicadorFinal",
+    "IndicadorDestino",
     "SpeedGovNFSe",
     "DEFAULT_SPEEDGOV_URL",
     "Rps",

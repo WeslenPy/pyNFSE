@@ -170,36 +170,128 @@ class ControleIBSCBS(ABRASFTypesNode):
     c_ind_op: Optional[Annotated[str, StringConstraints(max_length=6)]] = Field(None, alias="CIndOp")
     x_tp_ente_gov: Optional[Annotated[str, StringConstraints(max_length=2000)]] = Field(None, alias="XTpEnteGov")
 
+from typing import Optional, Annotated
+from pydantic import Field, model_validator
+from decimal import Decimal
+
+
 class IBSCBS(ABRASFTypesNode):
-    ibscbs_base_calculo: Optional[tsValor] = Field(None, alias="IBSCBSBaseCalculo")
-    ibsu_f_aliquota: Optional[tsValor] = Field(None, alias="IBSUFAliquota")
-    ib_mun_aliquota: Optional[tsValor] = Field(None, alias="IBSMunAliquota")
-    cbs_aliquota: Optional[tsValor] = Field(None, alias="CBSAliquota")
-    ibsu_f_valor: Optional[tsValor] = Field(None, alias="IBSUFValor")
-    ibs_mun_valor: Optional[tsValor] = Field(None, alias="IBSMunValor")
-    cbs_valor: Optional[tsValor] = Field(None, alias="CBSValor")
-    ibsu_f_perc_reducao: Optional[tsValor] = Field(None, alias="IBSUFPercReducao")
-    ibs_mun_perc_reducao: Optional[tsValor] = Field(None, alias="IBSMunPercReducao")
-    cbs_perc_reducao: Optional[tsValor] = Field(None, alias="CBSPercReducao")
-    ibsu_f_aliquota_efetiva: Optional[tsValor] = Field(None, alias="IBSUFAliquotaEfetiva")
-    ibs_mun_aliquota_efetiva: Optional[tsValor] = Field(None, alias="IBSMunAliquotaEfetiva")
-    cbs_aliquota_efetiva: Optional[tsValor] = Field(None, alias="CBSAliquotaEfetiva")
-    ibsu_f_perc_diferimento: Optional[tsValor] = Field(None, alias="IBSUFPercDiferimento")
-    ibs_mun_perc_diferimento: Optional[tsValor] = Field(None, alias="IBSMunPercDiferimento")
-    cbs_perc_diferimento: Optional[tsValor] = Field(None, alias="CBSPercDiferimento")
-    ibsu_f_valor_diferido: Optional[tsValor] = Field(None, alias="IBSUFValorDiferido")
-    ibs_mun_valor_diferido: Optional[tsValor] = Field(None, alias="IBSMunValorDiferido")
-    cbs_valor_diferido: Optional[tsValor] = Field(None, alias="CBSValorDiferido")
-    ibs_credito_presumido_aliq: Optional[tsValor] = Field(None, alias="IBSCreditoPresumidoAliq")
-    ibs_credito_presumido_valor: Optional[tsValor] = Field(None, alias="IBSCreditoPresumidoValor")
-    cbs_credito_presumido_aliq: Optional[tsValor] = Field(None, alias="CBSCreditoPresumidoAliq")
-    cbs_credito_presumido_valor: Optional[tsValor] = Field(None, alias="CBSCreditoPresumidoValor")
-    ibs_valor_total: Optional[tsValor] = Field(None, alias="IBSValorTotal")
-    valor_total_com_tributos: Optional[tsValor] = Field(None, alias="ValorTotalComTributos")
-    ibs_valor_reembolso: Optional[tsValor] = Field(None, alias="IBSValorReembolso")
-    localidade_incidencia_cod: Optional[tsCodigoMunicipioIbge] = Field(None, alias="LocalidadeIncidenciaCod")
-    localidade_incidencia_nome: Optional[Annotated[str, StringConstraints(max_length=2000)]] = Field(None, alias="LocalidadeIncidenciaNome")
-    perc_redutor_compra_gov: Optional[tsValor] = Field(None, alias="PercRedutorCompraGov")
+    ibscbs_base_calculo: Optional[Decimal] = Field(None, alias="IBSCBSBaseCalculo")
+
+    ibsu_f_aliquota: Optional[Decimal] = Field(None, alias="IBSUFAliquota")
+    ib_mun_aliquota: Optional[Decimal] = Field(None, alias="IBSMunAliquota")
+    cbs_aliquota: Optional[Decimal] = Field(None, alias="CBSAliquota")
+
+    ibsu_f_valor: Optional[Decimal] = Field(None, alias="IBSUFValor")
+    ibs_mun_valor: Optional[Decimal] = Field(None, alias="IBSMunValor")
+    cbs_valor: Optional[Decimal] = Field(None, alias="CBSValor")
+
+    ibsu_f_perc_reducao: Optional[Decimal] = Field(None, alias="IBSUFPercReducao")
+    ibs_mun_perc_reducao: Optional[Decimal] = Field(None, alias="IBSMunPercReducao")
+    cbs_perc_reducao: Optional[Decimal] = Field(None, alias="CBSPercReducao")
+
+    ibsu_f_aliquota_efetiva: Optional[Decimal] = Field(None, alias="IBSUFAliquotaEfetiva")
+    ibs_mun_aliquota_efetiva: Optional[Decimal] = Field(None, alias="IBSMunAliquotaEfetiva")
+    cbs_aliquota_efetiva: Optional[Decimal] = Field(None, alias="CBSAliquotaEfetiva")
+
+    ibsu_f_perc_diferimento: Optional[Decimal] = Field(None, alias="IBSUFPercDiferimento")
+    ibs_mun_perc_diferimento: Optional[Decimal] = Field(None, alias="IBSMunPercDiferimento")
+    cbs_perc_diferimento: Optional[Decimal] = Field(None, alias="CBSPercDiferimento")
+
+    ibsu_f_valor_diferido: Optional[Decimal] = Field(None, alias="IBSUFValorDiferido")
+    ibs_mun_valor_diferido: Optional[Decimal] = Field(None, alias="IBSMunValorDiferido")
+    cbs_valor_diferido: Optional[Decimal] = Field(None, alias="CBSValorDiferido")
+
+    ibs_credito_presumido_aliq: Optional[Decimal] = Field(None, alias="IBSCreditoPresumidoAliq")
+    ibs_credito_presumido_valor: Optional[Decimal] = Field(None, alias="IBSCreditoPresumidoValor")
+    cbs_credito_presumido_aliq: Optional[Decimal] = Field(None, alias="CBSCreditoPresumidoAliq")
+    cbs_credito_presumido_valor: Optional[Decimal] = Field(None, alias="CBSCreditoPresumidoValor")
+
+    ibs_valor_total: Optional[Decimal] = Field(None, alias="IBSValorTotal")
+    valor_total_com_tributos: Optional[Decimal] = Field(None, alias="ValorTotalComTributos")
+
+    ibs_valor_reembolso: Optional[Decimal] = Field(None, alias="IBSValorReembolso")
+
+    localidade_incidencia_cod: Optional[str] = Field(None, alias="LocalidadeIncidenciaCod")
+    localidade_incidencia_nome: Optional[Annotated[str, ...]] = Field(None, alias="LocalidadeIncidenciaNome")
+
+    perc_redutor_compra_gov: Optional[Decimal] = Field(None, alias="PercRedutorCompraGov")
+
+    @model_validator(mode="after")
+    def calcular_campos(self):
+        base = self.ibscbs_base_calculo or Decimal(0)
+
+        def calc_aliquota_efetiva(aliq, red):
+            if aliq is None:
+                return None
+            red = red or Decimal(0)
+            return aliq * (Decimal(1) - red)
+
+        def calc_valor(base, aliq_efetiva):
+            if base is None or aliq_efetiva is None:
+                return None
+            return base * aliq_efetiva
+
+        def calc_diferido(valor, perc):
+            if valor is None or perc is None:
+                return None
+            return valor * perc
+
+        # ALÍQUOTAS EFETIVAS 
+        if self.ibsu_f_aliquota_efetiva is None:
+            self.ibsu_f_aliquota_efetiva = calc_aliquota_efetiva(
+                self.ibsu_f_aliquota, self.ibsu_f_perc_reducao
+            )
+
+        if self.ibs_mun_aliquota_efetiva is None:
+            self.ibs_mun_aliquota_efetiva = calc_aliquota_efetiva(
+                self.ib_mun_aliquota, self.ibs_mun_perc_reducao
+            )
+
+        if self.cbs_aliquota_efetiva is None:
+            self.cbs_aliquota_efetiva = calc_aliquota_efetiva(
+                self.cbs_aliquota, self.cbs_perc_reducao
+            )
+
+        # VALORES 
+        if self.ibsu_f_valor is None:
+            self.ibsu_f_valor = calc_valor(base, self.ibsu_f_aliquota_efetiva)
+
+        if self.ibs_mun_valor is None:
+            self.ibs_mun_valor = calc_valor(base, self.ibs_mun_aliquota_efetiva)
+
+        if self.cbs_valor is None:
+            self.cbs_valor = calc_valor(base, self.cbs_aliquota_efetiva)
+
+        #DIFERIDOS
+        if self.ibsu_f_valor_diferido is None:
+            self.ibsu_f_valor_diferido = calc_diferido(
+                self.ibsu_f_valor, self.ibsu_f_perc_diferimento
+            )
+
+        if self.ibs_mun_valor_diferido is None:
+            self.ibs_mun_valor_diferido = calc_diferido(
+                self.ibs_mun_valor, self.ibs_mun_perc_diferimento
+            )
+
+        if self.cbs_valor_diferido is None:
+            self.cbs_valor_diferido = calc_diferido(
+                self.cbs_valor, self.cbs_perc_diferimento
+            )
+
+        #TOTAL IBS
+        if self.ibs_valor_total is None:
+            self.ibs_valor_total = (self.ibsu_f_valor or 0) + (self.ibs_mun_valor or 0)
+
+        # TOTAL COM TRIBUTOS
+        if self.valor_total_com_tributos is None:
+            self.valor_total_com_tributos = (
+                base
+                + (self.ibs_valor_total or 0)
+                + (self.cbs_valor or 0)
+            )
+
+        return self
 
 class InfRps(ABRASFTypesNode):
     id: Optional[Annotated[str, StringConstraints(max_length=255)]] = Field(None, alias="Id")

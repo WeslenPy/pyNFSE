@@ -8,8 +8,8 @@ from pynfse.src.integration.carnaubal.speedgov import SpeedGovNFSe
 
 def main():
     URL_HOMOLOGACAO = "http://speedgov.com.br:80/wsmod/Nfes?wsdl"
-    cnpj = "40114832000153"
-    inscricao_municipal = "10759"
+    cnpj = "57255426000103"
+    inscricao_municipal = "1"
 
     provider = SpeedGovNFSe(URL=URL_HOMOLOGACAO)
 
