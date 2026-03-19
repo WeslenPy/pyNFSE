@@ -159,7 +159,7 @@ def criar_rps_exemplo(cnpj_lote:str,inscricao_municipal:str) -> Rps:
                 CBSCreditoPresumidoValor=Decimal("0"),
                 
 			# <!-- Redutor Compra Governamental -->
-                perc_redutor_compra_gov=Decimal("0"),
+                PercRedutorCompraGov=Decimal("0"),
                 
             )
         )
