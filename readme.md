@@ -2,7 +2,7 @@
 
 Biblioteca Python para geração, assinatura e comunicação com Web Services de Nota Fiscal de Serviço Eletrônica (NFSe), com foco inicial no padrão ABRASF v1 (Provedor Carnaubal/SpeedGov).
 
-## 🚀 Características
+## Características
 
 - **Modelagem com Pydantic**: Estruturas XML definidas como classes Python fortemente tipadas, garantindo validação de dados antes mesmo da geração do XML.
 - **Assinatura Digital Integrada**: Suporte a certificados PEM e PFX (PKCS#12) com assinatura XMLDSIG (SHA256) automática.
@@ -10,7 +10,7 @@ Biblioteca Python para geração, assinatura e comunicação com Web Services de
 - **Parser Inteligente**: Conversão automática de respostas XML/SOAP para dicionários Python ou modelos Pydantic, removendo namespaces e envelopes desnecessários.
 - **Cache de Recursos**: Sistema de cache em memória para certificados e arquivos XML remotos.
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 - [Python 3.11+](https://www.python.org/)
 - [Pydantic v2](https://docs.pydantic.dev/) para modelagem e validação.
@@ -19,7 +19,7 @@ Biblioteca Python para geração, assinatura e comunicação com Web Services de
 - [cryptography](https://cryptography.io/) para tratamento de certificados.
 - [xmltodict](https://github.com/martinblech/xmltodict) para conversão XML -> Dict.
 
-## 📂 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 pynfse/
@@ -36,7 +36,7 @@ pynfse/
 └── tests/                     # Suíte de testes unitários e de integração
 ```
 
-## 💻 Como Usar
+## Como Usar
 
 ### 1. Configuração do Provedor
 
@@ -84,7 +84,7 @@ resultado = EnviarLoteRpsResposta(**resposta)
 print(f"Protocolo recebido: {resultado.protocolo}")
 ```
 
-## 🧪 Testes
+## Testes
 
 Para rodar a suíte de testes completa:
 
