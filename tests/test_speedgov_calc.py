@@ -27,7 +27,8 @@ from pynfse.src.integration.carnaubal.speedgov.models.rps import (
     IdentificacaoTomador,
 )
 from pynfse.src.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco
-from pynfse.src.integration.carnaubal.speedgov.helper.build import build_lote_element
+from pynfse.src.integration.carnaubal.speedgov.constants import ENVIO_NS, TIPOS_NS, XMLDSIG_NS, XSI_NS
+from pynfse.src.integration.carnaubal.speedgov.models.lote import EnviarLoteRpsEnvio
 from pynfse.src.integration.carnaubal.speedgov.models.lote import LoteRps, ListaRps
 
 
@@ -482,7 +483,9 @@ class TestXmlValoresCalculados:
             quantidade_rps=1,
             lista_rps=ListaRps(rps=[rps]),
         )
-        root = build_lote_element(lote)
+        envio = EnviarLoteRpsEnvio(lote_rps=lote)
+        nsmap = {"p": ENVIO_NS, "p1": TIPOS_NS, "ds": XMLDSIG_NS, "xsi": XSI_NS}
+        root = envio.to_element("EnviarLoteRpsEnvio", namespace=ENVIO_NS, nsmap=nsmap)
         xml_str = etree.tostring(root, encoding="unicode")
         assert "100.0" in xml_str or "100" in xml_str  # ValorServicos
         assert "5.0" in xml_str or "5" in xml_str  # ValorIss calculado

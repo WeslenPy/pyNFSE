@@ -14,19 +14,31 @@ from pynfse.src.common.api import NFSeBase
 from pynfse.src.common.response_parser import parse_resposta_xml
 from pynfse.src.common.xml import XMLBase
 from pynfse.src.common.signature import Signature
-from pynfse.src.integration.carnaubal.speedgov.models.rps import Rps
-from pynfse.src.integration.carnaubal.speedgov.models.lote import LoteRps, ListaRps
-from pynfse.src.integration.carnaubal.speedgov.helper.build import (
-    build_cancelar_nfse_xml,
-    build_consult_lote_rps_xml,
-    build_consult_nfse_xml,
-    build_consult_rps_xml,
-    build_consult_situacao_lote_rps_xml,
-    build_lote_element,
-    build_lote_xml,
-    get_header_speedgov,
+from pynfse.src.integration.carnaubal.abrasf.models.cancelamento import (
+    CancelarNfseEnvio,
+    InfPedidoCancelamento,
+    PedidoCancelamento,
+    IdentificacaoNfse,
 )
-from pynfse.src.integration.carnaubal.speedgov.helper.build import TIPOS_NS
+from pynfse.src.integration.carnaubal.abrasf.models.consulta import ConsultarNfseEnvio
+from pynfse.src.integration.carnaubal.abrasf.models.consultar_lote import (
+    ConsultarLoteRpsEnvio,
+    ConsultarSituacaoLoteRpsEnvio,
+)
+from pynfse.src.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
+from pynfse.src.integration.carnaubal.abrasf.models.rps import (
+    IdentificacaoPrestador as AbrasfIdentificacaoPrestador,
+    IdentificacaoRps as AbrasfIdentificacaoRps,
+)
+from pynfse.src.integration.carnaubal.speedgov.constants import (
+    ENVIO_NS,
+    TIPOS_NS,
+    XMLDSIG_NS,
+    XSI_NS,
+)
+from pynfse.src.integration.carnaubal.speedgov.models.rps import Rps
+from pynfse.src.integration.carnaubal.speedgov.models.lote import EnviarLoteRpsEnvio, LoteRps, ListaRps
+from pynfse.src.integration.carnaubal.speedgov.helper.header import get_header_speedgov
 from pynfse.src.integration.carnaubal.speedgov.helper.sign import sign_rps_element
 from pynfse.src.integration.carnaubal.speedgov.models.respostas import (
     CancelarNfseResposta,
@@ -40,7 +52,27 @@ from pynfse.src.integration.carnaubal.speedgov.models.respostas import (
 T = TypeVar("T", bound=BaseModel)
 
 DEFAULT_SPEEDGOV_URL = "http://speedgov.com.br:80/wsmod/Nfes?wsdl"
-XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
+
+CONSULTAR_NFSE_ENVIO_NS = "http://ws.speedgov.com.br/consultar_nfse_envio_v1.xsd"
+CONSULTAR_NFSE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_nfse_rps_envio_v1.xsd"
+CONSULTAR_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_lote_rps_envio_v1.xsd"
+CONSULTAR_SITUACAO_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_situacao_lote_rps_envio_v1.xsd"
+CANCELAR_NFSE_ENVIO_NS = "http://ws.speedgov.com.br/cancelar_nfse_envio_v1.xsd"
+
+
+def _serialize_request_model(model, root_tag: str, schema_location: str) -> str:
+    """Serializa modelo ABRASF para XML string."""
+    element = model.to_element(
+        tag_name=root_tag,
+        namespace=schema_location,
+        nsmap={None: schema_location},
+    )
+    return etree.tostring(
+        element,
+        encoding="UTF-8",
+        xml_declaration=False,
+        pretty_print=False,
+    ).decode("utf-8")
 
 
 def _remove_ds_prefix(xml_str: str) -> str:
@@ -117,9 +149,25 @@ class SpeedGovNFSe(NFSeBase):
             quantidade_rps=len(rps_list),
             lista_rps=ListaRps(rps=rps_list),
         )
+        if signature and certificate_data is None:
+            for rps in lote.lista_rps.rps:
+                rps.signature = signature
+        envio = EnviarLoteRpsEnvio(lote_rps=lote)
+
+        nsmap = {
+            "p": ENVIO_NS,
+            "p1": TIPOS_NS,
+            "ds": XMLDSIG_NS,
+            "xsi": XSI_NS,
+        }
+        root = envio.to_element(
+            "EnviarLoteRpsEnvio",
+            namespace=ENVIO_NS,
+            nsmap=nsmap,
+        )
+        root.set(f"{{{XSI_NS}}}schemaLocation", ENVIO_NS)
 
         if certificate_data is not None:
-            root = build_lote_element(lote, signatures=None)
             lista = root.find(f".//{{{TIPOS_NS}}}ListaRps")
             if lista is not None:
                 rps_elements = list(lista.findall(f"{{{TIPOS_NS}}}Rps"))
@@ -141,8 +189,9 @@ class SpeedGovNFSe(NFSeBase):
             ).decode("utf-8")
             body_str = _remove_ds_prefix(body_str)
         else:
-            sigs = [signature] * len(rps_list) if signature else None
-            body_str = build_lote_xml(lote, sigs)
+            body_str = etree.tostring(
+                root, encoding="UTF-8", xml_declaration=False, pretty_print=False
+            ).decode("utf-8")
 
         header = get_header_speedgov()
         xml_base = self.get_xml_base()
@@ -160,10 +209,17 @@ class SpeedGovNFSe(NFSeBase):
         numero_nfse: Optional[int] = None,
     ) -> str:
         """Cria XML para consulta de NFSE (ConsultarNfse)."""
-        body_str = build_consult_nfse_xml(
-            cnpj=cnpj,
-            inscricao_municipal=inscricao_municipal,
+        consulta = ConsultarNfseEnvio(
+            prestador=AbrasfIdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
             numero_nfse=numero_nfse,
+        )
+        body_str = _serialize_request_model(
+            consulta,
+            "ConsultarNfseEnvio",
+            CONSULTAR_NFSE_ENVIO_NS,
         )
         header = get_header_speedgov()
         return self.get_xml_base().create_soap_envelope(
@@ -182,12 +238,17 @@ class SpeedGovNFSe(NFSeBase):
         inscricao_municipal: str,
     ) -> str:
         """Cria XML para consulta de NFSE por RPS (ConsultarNfsePorRps)."""
-        body_str = build_consult_rps_xml(
-            numero=numero,
-            serie=serie,
-            tipo=tipo,
-            cnpj=cnpj,
-            inscricao_municipal=inscricao_municipal,
+        consulta = ConsultarNfseRpsEnvio(
+            identificacao_rps=AbrasfIdentificacaoRps(numero=numero, serie=serie, tipo=tipo),
+            prestador=AbrasfIdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
+        )
+        body_str = _serialize_request_model(
+            consulta,
+            "ConsultarNfseRpsEnvio",
+            CONSULTAR_NFSE_RPS_ENVIO_NS,
         )
         header = get_header_speedgov()
         return self.get_xml_base().create_soap_envelope(
@@ -204,10 +265,18 @@ class SpeedGovNFSe(NFSeBase):
         inscricao_municipal: str,
     ) -> str:
         """Cria XML para consulta de lote de RPS por protocolo (ConsultarLoteRps)."""
-        body_str = build_consult_lote_rps_xml(
-            cnpj=cnpj,
-            inscricao_municipal=inscricao_municipal,
+        consulta = ConsultarLoteRpsEnvio(
+            id="",
+            prestador=AbrasfIdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
             protocolo=protocolo,
+        )
+        body_str = _serialize_request_model(
+            consulta,
+            "ConsultarLoteRpsEnvio",
+            CONSULTAR_LOTE_RPS_ENVIO_NS,
         )
         header = get_header_speedgov()
         return self.get_xml_base().create_soap_envelope(
@@ -224,10 +293,18 @@ class SpeedGovNFSe(NFSeBase):
         inscricao_municipal: str,
     ) -> str:
         """Cria XML para consulta de situação de lote de RPS (ConsultarSituacaoLoteRps)."""
-        body_str = build_consult_situacao_lote_rps_xml(
-            cnpj=cnpj,
-            inscricao_municipal=inscricao_municipal,
+        consulta = ConsultarSituacaoLoteRpsEnvio(
+            id="",
+            prestador=AbrasfIdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
             protocolo=protocolo,
+        )
+        body_str = _serialize_request_model(
+            consulta,
+            "ConsultarSituacaoLoteRpsEnvio",
+            CONSULTAR_SITUACAO_LOTE_RPS_ENVIO_NS,
         )
         header = get_header_speedgov()
         return self.get_xml_base().create_soap_envelope(
@@ -247,13 +324,22 @@ class SpeedGovNFSe(NFSeBase):
         id_pedido: str = "",
     ) -> str:
         """Cria XML para cancelamento de NFSE (CancelarNfse)."""
-        body_str = build_cancelar_nfse_xml(
-            numero_nfse=numero_nfse,
-            cnpj=cnpj,
-            inscricao_municipal=inscricao_municipal,
-            codigo_municipio=codigo_municipio,
-            codigo_cancelamento=codigo_cancelamento,
-            id_pedido=id_pedido,
+        pedido = PedidoCancelamento(
+            inf_pedido_cancelamento=InfPedidoCancelamento(
+                id=id_pedido or None,
+                identificacao_nfse=IdentificacaoNfse(
+                    numero=numero_nfse,
+                    cnpj=cnpj,
+                    inscricao_municipal=inscricao_municipal,
+                    codigo_municipio=codigo_municipio,
+                ),
+                codigo_cancelamento=codigo_cancelamento,
+            ),
+        )
+        body_str = _serialize_request_model(
+            CancelarNfseEnvio(pedido=pedido),
+            "CancelarNfseEnvio",
+            CANCELAR_NFSE_ENVIO_NS,
         )
         header = get_header_speedgov()
         return self.get_xml_base().create_soap_envelope(

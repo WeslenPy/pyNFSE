@@ -6,10 +6,10 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Annotated, Optional, Union
 
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import Field, ConfigDict, model_validator
 
-from pynfse.src.integration.carnaubal.abrasf.models.rps import IdentificacaoOrgaoGerador
-from pynfse.src.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco
+from pynfse.src.integration.carnaubal.speedgov.constants import XMLDSIG_NS
+from pynfse.src.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco, SpeedGovNode
 from pynfse.src.integration.carnaubal.speedgov.enums import (
     TipoEmissaoDPS,
     TipoAmbiente,
@@ -33,7 +33,7 @@ from pynfse.src.integration.carnaubal.speedgov.helper.calc import (
 # --- Blocos NFS-e Nacional encapsulados ---
 
 
-class DadosDPS(BaseModel):
+class DadosDPS(SpeedGovNode):
     """
     Dados da Declaração de Prestação de Serviços - NFS-e Nacional.
     Campos de escolha usam enums: TipoEmissaoDPS, TipoAmbiente, TributacaoIssqn,
@@ -59,7 +59,7 @@ class DadosDPS(BaseModel):
     data_competencia: Optional[datetime] = Field(None, alias="dCompet")
 
 
-class EnderecoObra(BaseModel):
+class EnderecoObra(SpeedGovNode):
     """Endereço da obra - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -70,7 +70,7 @@ class EnderecoObra(BaseModel):
     bairro: Optional[str] = Field(None, alias="Bairro", max_length=60)# bairro da obra
 
 
-class DadosObra(BaseModel):
+class DadosObra(SpeedGovNode):
     """Dados da obra - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -79,7 +79,7 @@ class DadosObra(BaseModel):
     endereco_obra: Optional[EnderecoObra] = Field(None, alias="EnderecoObra")# endereço da obra
 
 
-class ComercioExterior(BaseModel):
+class ComercioExterior(SpeedGovNode):
     """Comércio exterior - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -96,7 +96,7 @@ class ComercioExterior(BaseModel):
     c_pais_result: Optional[str] = Field(None, alias="CPaisResult", max_length=4)# código do país de resultado
 
 
-class ExigibilidadeSuspensa(BaseModel):
+class ExigibilidadeSuspensa(SpeedGovNode):
     """Exigibilidade suspensa - NFS-e Nacional. Use TipoExigibilidadeSuspensa para tp_susp."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -104,7 +104,7 @@ class ExigibilidadeSuspensa(BaseModel):
     n_processo: Optional[str] = Field(None, alias="NProcesso", max_length=30)# número do processo
 
 
-class BeneficioMunicipal(BaseModel):
+class BeneficioMunicipal(SpeedGovNode):
     """Benefício municipal - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -114,7 +114,7 @@ class BeneficioMunicipal(BaseModel):
     p_red_bcbm: Optional[float] = Field(None, alias="PRedBCBM")# percentual de redução da base de cálculo do benefício municipal
 
 
-class ReembolsoRepasse(BaseModel):
+class ReembolsoRepasse(SpeedGovNode):
     """Reembolso/repasse - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -123,7 +123,7 @@ class ReembolsoRepasse(BaseModel):
     v_reemb_rep_res: Optional[float] = Field(None, alias="VReembRepRes")# valor do reembolso/repasse
 
 
-class Destinatario(BaseModel):
+class Destinatario(SpeedGovNode):
     """Destinatário - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -144,7 +144,7 @@ class Destinatario(BaseModel):
     telefone: Optional[str] = Field(None, alias="Telefone", max_length=20)# telefone do destinatário
 
 
-class ControleIBSCBS(BaseModel):
+class ControleIBSCBS(SpeedGovNode):
     """Controle IBS/CBS - NFS-e Nacional. Use FinalidadeNFSe, IndicadorFinal, IndicadorDestino."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -157,7 +157,7 @@ class ControleIBSCBS(BaseModel):
     x_tp_ente_gov: Optional[str] = Field(None, alias="XTpEnteGov", max_length=2000)# descrição do tipo de ente governamental
 
 
-class IBSCBS(BaseModel):
+class IBSCBS(SpeedGovNode):
     """IBS/CBS - NFS-e Nacional."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -232,7 +232,7 @@ class IBSCBS(BaseModel):
         return self
 
 
-class IdentificacaoRps(BaseModel):
+class IdentificacaoRps(SpeedGovNode):
     """
     Identificação do RPS.
     Para tipo, use o enum TipoRps (ex: TipoRps.RPS) ou int 1|2|3.
@@ -244,20 +244,20 @@ class IdentificacaoRps(BaseModel):
     tipo: int = Field(..., alias="Tipo", ge=1, le=3, description="Tipo: use TipoRps (RPS=1, NOTA_FISCAL_CONJUGADA_CUPOM=2, CUPOM=3)")
 
 
-class IdentificacaoPrestador(BaseModel):
+class IdentificacaoPrestador(SpeedGovNode):
     model_config = ConfigDict(populate_by_name=True)
 
     cnpj: str = Field(..., alias="Cnpj", min_length=14, max_length=14)# CNPJ do prestador
     inscricao_municipal: str = Field(..., alias="InscricaoMunicipal", min_length=1, max_length=15)# inscrição municipal do prestador
 
 
-class IdentificacaoTomador(BaseModel):
+class IdentificacaoTomador(SpeedGovNode):
     model_config = ConfigDict(populate_by_name=True)
 
     cpf_cnpj: CpfCnpj = Field(..., alias="CpfCnpj")# CPF/CNPJ do tomador
 
 
-class Valores(BaseModel):
+class Valores(SpeedGovNode):
     """
     Valores do serviço - NFS-e.
     Campos derivados (base_calculo, valor_iss, valor_pis, valor_cofins, valor_liquido_nfse)
@@ -347,7 +347,7 @@ class Valores(BaseModel):
 
         return self
 
-class DadosServico(BaseModel):
+class DadosServico(SpeedGovNode):
     model_config = ConfigDict(populate_by_name=True)
 
     valores: Valores = Field(..., alias="Valores")# valores do serviço
@@ -358,7 +358,7 @@ class DadosServico(BaseModel):
     codigo_municipio: int = Field(..., alias="CodigoMunicipio", ge=0, le=9999999)# código municipio
 
 
-class DadosTomador(BaseModel):
+class DadosTomador(SpeedGovNode):
     """Tomador - sem Contato."""
     model_config = ConfigDict(populate_by_name=True)
 
@@ -367,7 +367,7 @@ class DadosTomador(BaseModel):
     endereco: Endereco = Field(..., alias="Endereco")# endereço do tomador
 
 
-class InfRps(BaseModel):
+class InfRps(SpeedGovNode):
     """
     InfRps - campos base + blocos opcionais NFS-e Nacional.
     Use os enums para campos de escolha: NaturezaOperacao, RegimeEspecialTributacao,
@@ -383,21 +383,21 @@ class InfRps(BaseModel):
     optante_simples_nacional: int = Field(..., alias="OptanteSimplesNacional", ge=1, le=2, description="Use SimNao")
     incentivador_cultural: int = Field(2, alias="IncentivadorCultural", ge=1, le=2, description="Use SimNao")
     status: int = Field(1, alias="Status", ge=1, le=2, description="Use StatusRps")
-    servico: DadosServico = Field(..., alias="Servico")# dados do serviço
-    prestador: IdentificacaoPrestador = Field(..., alias="Prestador")# identificacao do prestador
-    tomador: DadosTomador = Field(..., alias="Tomador")# dados do tomador
-    
-    # Blocos NFS-e Nacional encapsulados
-    dados_dps: Optional[DadosDPS] = Field(None, alias="DadosDPS") # prestação de serviços
-    dados_obra: Optional[DadosObra] = Field(None, alias="DadosObra") # obra
-    comercio_exterior: Optional[ComercioExterior] = Field(None, alias="ComercioExterior") # comércio exterior
-    exigibilidade_suspensa: Optional[ExigibilidadeSuspensa] = Field(None, alias="ExigibilidadeSuspensa") # exigibilidade suspensa
-    beneficio_municipal: Optional[BeneficioMunicipal] = Field(None, alias="BeneficioMunicipal") # benefício municipal
-    reembolso_repasse: Optional[ReembolsoRepasse] = Field(None, alias="ReembolsoRepasse") # reembolso/repasse
-    destinatario: Optional[Destinatario] = Field(None, alias="Destinatario") # destinatário
-    controle_ibscbs: Optional[ControleIBSCBS] = Field(None, alias="ControleIBSCBS") # controle IBS/CBS
-    ibscbs: Optional[IBSCBS] = Field(None, alias="IBSCBS") # IBS/CBS
-    data_competencia: Optional[date] = Field(None, alias="DataCompetencia") # data de competência do RPS
+    servico: DadosServico = Field(..., alias="Servico")
+    prestador: IdentificacaoPrestador = Field(..., alias="Prestador")
+    tomador: DadosTomador = Field(..., alias="Tomador")
+
+    # Blocos NFS-e Nacional encapsulados (xml_emit_if_any: emitir só se houver valor)
+    dados_dps: Optional[DadosDPS] = Field(None, alias="DadosDPS", json_schema_extra={"xml_emit_if_any": True})
+    dados_obra: Optional[DadosObra] = Field(None, alias="DadosObra", json_schema_extra={"xml_emit_if_any": True})
+    comercio_exterior: Optional[ComercioExterior] = Field(None, alias="ComercioExterior", json_schema_extra={"xml_emit_if_any": True})
+    exigibilidade_suspensa: Optional[ExigibilidadeSuspensa] = Field(None, alias="ExigibilidadeSuspensa", json_schema_extra={"xml_emit_if_any": True})
+    beneficio_municipal: Optional[BeneficioMunicipal] = Field(None, alias="BeneficioMunicipal", json_schema_extra={"xml_emit_if_any": True})
+    reembolso_repasse: Optional[ReembolsoRepasse] = Field(None, alias="ReembolsoRepasse", json_schema_extra={"xml_emit_if_any": True})
+    destinatario: Optional[Destinatario] = Field(None, alias="Destinatario", json_schema_extra={"xml_emit_if_any": True})
+    controle_ibscbs: Optional[ControleIBSCBS] = Field(None, alias="ControleIBSCBS", json_schema_extra={"xml_emit_if_any": True})
+    ibscbs: Optional[IBSCBS] = Field(None, alias="IBSCBS", json_schema_extra={"xml_emit_if_any": True})
+    data_competencia: Optional[date] = Field(None, alias="DataCompetencia")
 
     @model_validator(mode="after")
     def _calcular_valor_total_com_tributos(self):
@@ -417,9 +417,17 @@ class InfRps(BaseModel):
         return self
 
 
-class Rps(BaseModel):
+class Rps(SpeedGovNode):
     """Rps = InfRps + Signature (conforme reference - Signature dentro de Rps)."""
     model_config = ConfigDict(populate_by_name=True)
 
-    inf_rps: InfRps = Field(..., alias="InfRps")# informações do RPS
-    signature: Optional[Signature] = Field(None, alias="Signature")# assinatura do RPS
+    inf_rps: InfRps = Field(..., alias="InfRps")
+    signature: Optional[Signature] = Field(
+        None,
+        alias="Signature",
+        json_schema_extra={
+            "xml_namespace": XMLDSIG_NS,
+            "xml_child_namespace": None,
+            "xml_reset_default_namespace": False,
+        },
+    )
