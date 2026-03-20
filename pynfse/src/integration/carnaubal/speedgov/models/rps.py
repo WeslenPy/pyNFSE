@@ -6,7 +6,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Annotated, Optional, Union
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from pynfse.src.integration.carnaubal.abrasf.models.rps import IdentificacaoOrgaoGerador
 from pynfse.src.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco
@@ -19,6 +19,15 @@ from pynfse.src.integration.carnaubal.speedgov.enums import (
     RegimeApuracaoTributosSN,
 )
 from pynfse.src.common.signature import Signature
+from pynfse.src.integration.carnaubal.speedgov.helper.calc import (
+    calc_base_calculo,
+    calc_valor_iss,
+    calc_pis_valor,
+    calc_cofins_valor,
+    calc_valor_liquido_nfse,
+    calc_ibscbs,
+    calc_valor_total_com_tributos,
+)
 
 
 # --- Blocos NFS-e Nacional encapsulados ---
@@ -193,85 +202,36 @@ class IBSCBS(BaseModel):
 
     perc_redutor_compra_gov: Optional[Decimal] = Field(None, alias="PercRedutorCompraGov")
 
+    @model_validator(mode="after")
+    def _calcular_campos_ibscbs(self):
+        """
+        Calcula alíquotas efetivas, valores, diferidos, IBSValorTotal.
+        ValorTotalComTributos é calculado em InfRps (usa valor_servicos do pai).
+        """
+        base = self.ibscbs_base_calculo or Decimal(0)
+        if base == 0 and not (self.ibsu_f_aliquota or self.ib_mun_aliquota or self.cbs_aliquota):
+            return self
+
+        result = calc_ibscbs(
+            base,
+            self.ibsu_f_aliquota,
+            self.ib_mun_aliquota,
+            self.cbs_aliquota,
+            self.ibsu_f_perc_reducao,
+            self.ibs_mun_perc_reducao,
+            self.cbs_perc_reducao,
+            self.ibsu_f_perc_diferimento,
+            self.ibs_mun_perc_diferimento,
+            self.cbs_perc_diferimento,
+        )
+
+        for key, value in result.items():
+            if value is not None and getattr(self, key, None) is None:
+                object.__setattr__(self, key, value)
+
+        return self
 
 
-    # @model_validator(mode="after")
-    # def calcular_campos(self):
-    #     base = self.ibscbs_base_calculo or Decimal(0)
-
-    #     def calc_aliquota_efetiva(aliq, red):
-    #         if aliq is None:
-    #             return None
-    #         red = red or Decimal(0)
-    #         return aliq * (Decimal(1) - red)
-
-    #     def calc_valor(base, aliq_efetiva):
-    #         if base is None or aliq_efetiva is None:
-    #             return None
-    #         return base * aliq_efetiva
-
-    #     def calc_diferido(valor, perc):
-    #         if valor is None or perc is None:
-    #             return None
-    #         return valor * perc
-
-    #     # ALÍQUOTAS EFETIVAS 
-    #     if self.ibsu_f_aliquota_efetiva is None:
-    #         self.ibsu_f_aliquota_efetiva = calc_aliquota_efetiva(
-    #             self.ibsu_f_aliquota, self.ibsu_f_perc_reducao
-    #         )
-
-    #     if self.ibs_mun_aliquota_efetiva is None:
-    #         self.ibs_mun_aliquota_efetiva = calc_aliquota_efetiva(
-    #             self.ib_mun_aliquota, self.ibs_mun_perc_reducao
-    #         )
-
-    #     if self.cbs_aliquota_efetiva is None:
-    #         self.cbs_aliquota_efetiva = calc_aliquota_efetiva(
-    #             self.cbs_aliquota, self.cbs_perc_reducao
-    #         )
-
-    #     # VALORES 
-    #     if self.ibsu_f_valor is None:
-    #         self.ibsu_f_valor = calc_valor(base, self.ibsu_f_aliquota_efetiva)
-
-    #     if self.ibs_mun_valor is None:
-    #         self.ibs_mun_valor = calc_valor(base, self.ibs_mun_aliquota_efetiva)
-
-    #     if self.cbs_valor is None:
-    #         self.cbs_valor = calc_valor(base, self.cbs_aliquota_efetiva)
-
-    #     #DIFERIDOS
-    #     if self.ibsu_f_valor_diferido is None:
-    #         self.ibsu_f_valor_diferido = calc_diferido(
-    #             self.ibsu_f_valor, self.ibsu_f_perc_diferimento
-    #         )
-
-    #     if self.ibs_mun_valor_diferido is None:
-    #         self.ibs_mun_valor_diferido = calc_diferido(
-    #             self.ibs_mun_valor, self.ibs_mun_perc_diferimento
-    #         )
-
-    #     if self.cbs_valor_diferido is None:
-    #         self.cbs_valor_diferido = calc_diferido(
-    #             self.cbs_valor, self.cbs_perc_diferimento
-    #         )
-
-    #     #TOTAL IBS
-    #     if self.ibs_valor_total is None:
-    #         self.ibs_valor_total = (self.ibsu_f_valor or 0) + (self.ibs_mun_valor or 0)
-
-    #     # TOTAL COM TRIBUTOS
-    #     if self.valor_total_com_tributos is None:
-    #         self.valor_total_com_tributos = (
-    #             base
-    #             + (self.ibs_valor_total or 0)
-    #             + (self.cbs_valor or 0)
-    #         )
-
-    #     return self
-    
-    
 class IdentificacaoRps(BaseModel):
     """
     Identificação do RPS.
@@ -298,36 +258,94 @@ class IdentificacaoTomador(BaseModel):
 
 
 class Valores(BaseModel):
-    """Valores básicos - sem CSTPisCofins, BaseCalculoPisCofins, TipoRetencaoPisCofins."""
+    """
+    Valores do serviço - NFS-e.
+    Campos derivados (base_calculo, valor_iss, valor_pis, valor_cofins, valor_liquido_nfse)
+    podem ser omitidos e serão calculados automaticamente pelo model_validator.
+    """
     model_config = ConfigDict(populate_by_name=True)
 
-    valor_servicos: float = Field(..., alias="ValorServicos", ge=0)# valor dos serviços 
+    valor_servicos: float = Field(..., alias="ValorServicos", ge=0)
     valor_deducoes: float = Field(0, alias="ValorDeducoes", ge=0)
-    valor_pis: float = Field(0, alias="ValorPis", ge=0)# valor do PIS
-    valor_cofins: float = Field(0, alias="ValorCofins", ge=0)# valor do COFINS
-    valor_inss: float = Field(0, alias="ValorInss", ge=0)# valor do INSS
-    valor_ir: float = Field(0, alias="ValorIr", ge=0)# valor do IR
-    valor_csll: float = Field(0, alias="ValorCsll", ge=0)# valor do CSLL
+    valor_pis: Optional[float] = Field(None, alias="ValorPis", ge=0)
+    valor_cofins: Optional[float] = Field(None, alias="ValorCofins", ge=0)
+    valor_inss: float = Field(0, alias="ValorInss", ge=0)
+    valor_ir: float = Field(0, alias="ValorIr", ge=0)
+    valor_csll: float = Field(0, alias="ValorCsll", ge=0)
     iss_retido: int = Field(2, alias="IssRetido", ge=1, le=2, description="Use IssRetido (SIM=1, NAO=2)")
-    valor_iss: float = Field(..., alias="ValorIss", ge=0)# valor do ISS
-    valor_iss_retido: float = Field(0, alias="ValorIssRetido", ge=0)# valor do ISS retido
-    outras_retencoes: float = Field(0, alias="OutrasRetencoes", ge=0)# outras retenções
-    base_calculo: float = Field(..., alias="BaseCalculo", ge=0)# base de cálculo
-    aliquota: float = Field(..., alias="Aliquota", ge=0, le=9.9999)# aliquota
-    valor_liquido_nfse: float = Field(..., alias="ValorLiquidoNfse", ge=0)# valor líquido da NFSE
+    valor_iss: Optional[float] = Field(None, alias="ValorIss", ge=0)
+    valor_iss_retido: float = Field(0, alias="ValorIssRetido", ge=0)
+    outras_retencoes: float = Field(0, alias="OutrasRetencoes", ge=0)
+    base_calculo: Optional[float] = Field(None, alias="BaseCalculo", ge=0)
+    aliquota: float = Field(..., alias="Aliquota", ge=0, le=9.9999)
+    valor_liquido_nfse: Optional[float] = Field(None, alias="ValorLiquidoNfse", ge=0)
     desconto_condicionado: float = Field(0, alias="DescontoCondicionado", ge=0)
-    desconto_incondicionado: float = Field(0, alias="DescontoIncondicionado", ge=0)# desconto incondicionado
-    
-    cstp_pis_cofins: float = Field(0, alias="CSTPisCofins", ge=0)# desconto incondicionado
-    base_calculo_pis_cofins: float = Field(0, alias="BaseCalculoPisCofins", ge=0)# desconto incondicionado
-    tipo_retencao_pis_cofins: float = Field(0, alias="TipoRetencaoPisCofins", ge=0)# desconto incondicionado
-    
+    desconto_incondicionado: float = Field(0, alias="DescontoIncondicionado", ge=0)
+
+    cstp_pis_cofins: float = Field(0, alias="CSTPisCofins", ge=0)
+    base_calculo_pis_cofins: float = Field(0, alias="BaseCalculoPisCofins", ge=0)
+    tipo_retencao_pis_cofins: float = Field(0, alias="TipoRetencaoPisCofins", ge=0)
+
     aliq_pis: float = Field(0, alias="AliqPis", ge=0)
     aliq_cofins: float = Field(0, alias="AliqCofins", ge=0)
-    
+
     p_tot_trib_fed: float = Field(0, alias="pTotTribFed", ge=0)
     p_tot_trib_est: float = Field(0, alias="pTotTribEst", ge=0)
     p_tot_trib_mun: float = Field(0, alias="pTotTribMun", ge=0)
+
+    @model_validator(mode="after")
+    def _calcular_campos_derivados(self):
+        """Preenche base_calculo, valor_iss, valor_pis, valor_cofins, valor_liquido_nfse se None."""
+        # 1. Base de cálculo
+        if self.base_calculo is None:
+            bc = calc_base_calculo(self.valor_servicos, self.valor_deducoes)
+            object.__setattr__(self, "base_calculo", float(bc))
+        base = self.base_calculo
+
+        # 2. Valor ISS
+        if self.valor_iss is None:
+            vi = calc_valor_iss(base, self.aliquota)
+            object.__setattr__(self, "valor_iss", float(vi))
+
+        # 3. PIS (se aliq_pis > 0)
+        if self.valor_pis is None and self.aliq_pis and self.aliq_pis > 0:
+            base_pc = self.base_calculo_pis_cofins or base
+            vp = calc_pis_valor(base_pc, self.aliq_pis)
+            if vp is not None:
+                object.__setattr__(self, "valor_pis", float(vp))
+            else:
+                object.__setattr__(self, "valor_pis", 0.0)
+        elif self.valor_pis is None:
+            object.__setattr__(self, "valor_pis", 0.0)
+
+        # 4. COFINS (se aliq_cofins > 0)
+        if self.valor_cofins is None and self.aliq_cofins and self.aliq_cofins > 0:
+            base_pc = self.base_calculo_pis_cofins or base
+            vc = calc_cofins_valor(base_pc, self.aliq_cofins)
+            if vc is not None:
+                object.__setattr__(self, "valor_cofins", float(vc))
+            else:
+                object.__setattr__(self, "valor_cofins", 0.0)
+        elif self.valor_cofins is None:
+            object.__setattr__(self, "valor_cofins", 0.0)
+
+        # 5. Valor líquido
+        if self.valor_liquido_nfse is None:
+            vl = calc_valor_liquido_nfse(
+                base,
+                self.valor_pis or 0,
+                self.valor_cofins or 0,
+                self.valor_inss,
+                self.valor_ir,
+                self.valor_csll,
+                self.outras_retencoes,
+                self.iss_retido,
+                self.valor_iss or 0,
+                self.valor_iss_retido,
+            )
+            object.__setattr__(self, "valor_liquido_nfse", float(vl))
+
+        return self
 
 class DadosServico(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -380,6 +398,23 @@ class InfRps(BaseModel):
     controle_ibscbs: Optional[ControleIBSCBS] = Field(None, alias="ControleIBSCBS") # controle IBS/CBS
     ibscbs: Optional[IBSCBS] = Field(None, alias="IBSCBS") # IBS/CBS
     data_competencia: Optional[date] = Field(None, alias="DataCompetencia") # data de competência do RPS
+
+    @model_validator(mode="after")
+    def _calcular_valor_total_com_tributos(self):
+        """
+        Preenche ibscbs.valor_total_com_tributos usando valor_servicos do pai.
+        ValorTotalComTributos = ValorServicos + IBSValorTotal + CBSValor.
+        """
+        if self.ibscbs is None:
+            return self
+        if self.ibscbs.valor_total_com_tributos is not None:
+            return self
+        valor_servicos = self.servico.valores.valor_servicos
+        ibs_total = self.ibscbs.ibs_valor_total or Decimal(0)
+        cbs_valor = self.ibscbs.cbs_valor or Decimal(0)
+        vtt = calc_valor_total_com_tributos(valor_servicos, ibs_total, cbs_valor)
+        object.__setattr__(self.ibscbs, "valor_total_com_tributos", vtt)
+        return self
 
 
 class Rps(BaseModel):

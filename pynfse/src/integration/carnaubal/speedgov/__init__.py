@@ -23,6 +23,7 @@ from pynfse.src.integration.carnaubal.speedgov.enums import (
     IndicadorFinal,
     IndicadorDestino,
 )
+from pynfse.src.integration.carnaubal.speedgov.helper import calc as calc  # noqa: F401 - funções de cálculo automático
 from pynfse.src.integration.carnaubal.speedgov.models import (
     Rps,
     InfRps,
@@ -85,4 +86,5 @@ __all__ = [
     "ConsultarLoteRpsResposta",
     "ConsultarSituacaoLoteRpsResposta",
     "RespostasSpeedGov",
+    "calc",
 ]
