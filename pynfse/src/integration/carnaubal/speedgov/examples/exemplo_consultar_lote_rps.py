@@ -8,9 +8,9 @@ from pynfse.src.integration.carnaubal.speedgov import SpeedGovNFSe
 
 def main():
     URL_HOMOLOGACAO = "http://speedgov.com.br:80/wsmod/Nfes?wsdl"
-    cnpj = "57255426000103"
+    cnpj = "40114832000153"
     inscricao_municipal = "1"
-    protocolo = "20240000001"  # Protocolo retornado no RecepcionarLoteRps
+    protocolo = "42f469ea-ea73-4095-851d-ccee572ee05e"  # Protocolo retornado no RecepcionarLoteRps
 
     provider = SpeedGovNFSe(URL=URL_HOMOLOGACAO)
 

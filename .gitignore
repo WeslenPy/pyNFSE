@@ -20,3 +20,5 @@ nf.xml
 speedgov.py
 *.pyc
 teste.xml
+
+consultar.py

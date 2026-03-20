@@ -11,6 +11,7 @@ from pydantic import Field, ConfigDict, model_validator
 from pynfse.src.integration.carnaubal.speedgov.constants import XMLDSIG_NS
 from pynfse.src.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco, SpeedGovNode
 from pynfse.src.integration.carnaubal.speedgov.enums import (
+    RegimeEspecialTributacao,
     TipoEmissaoDPS,
     TipoAmbiente,
     TributacaoIssqn,
@@ -44,14 +45,14 @@ class DadosDPS(SpeedGovNode):
     tp_emit: Optional[Union[TipoEmissaoDPS, int]] = Field(None, alias="TpEmit", description="TipoEmissaoDPS: 1=Prestador, 2=Tomador")
     tp_amb: Optional[Union[TipoAmbiente, int]] = Field(None, alias="TpAmb", description="TipoAmbiente: 1=Produção, 2=Homologação")
     dh_emi: Optional[datetime] = Field(None, alias="DhEmi")
-    ver_aplic: Optional[str] = Field(None, alias="VerAplic", max_length=20)
+    ver_aplic: Optional[str] = Field("ISS_V2_1.0.0", alias="VerAplic", max_length=20)
     cloc_emi: Optional[Union[int, str]] = Field(None, alias="CLocEmi")
     cloc_prestacao: Optional[Union[int, str]] = Field(None, alias="CLocPrestacao")
     ctrib_nac: Optional[str] = Field(None, alias="CTribNac", max_length=6)
     trib_issqn: Optional[Union[TributacaoIssqn, int]] = Field(None, alias="TribIssqn", description="TributacaoIssqn: 1=Normal, 2=Imune, 3=Isento, 4=Exportação")
     tp_ret_issqn: Optional[Union[TipoRetencaoIssqn, int]] = Field(None, alias="TpRetIssqn", description="TipoRetencaoIssqn: 1=Não retido, 2=Tomador, 3=Intermediário")
     op_simp_nac: Optional[Union[OptanteSimplesNacionalDPS, int]] = Field(None, alias="OpSimpNac", description="OptanteSimplesNacionalDPS: 1=Não optante, 2=ME/EPP, 3=MEI")
-    reg_esp_trib: Optional[str] = Field(None, alias="RegEspTrib", max_length=10)
+    reg_esp_trib: Optional[Union[RegimeEspecialTributacao, int]] = Field(None, alias="RegEspTrib", description="RegimeEspecialTributacao: 0=Nenhum, 1=Microempresa Municipal, 2=Estimativa, 3=Sociedade Profissionais, 4=Cooperativa, 5=MEI, 6=ME/EPP Simples Nacional")
     reg_ap_trib_sn: Optional[Union[RegimeApuracaoTributosSN, int]] = Field(None, alias="RegApTribSN", description="RegimeApuracaoTributosSN: 1=Fed+Mun SN, 2=Fed SN+ISSQN NFSe, 3=Fed+Mun NFSe")
 
     serie: Optional[int] = Field(None, alias="serie")

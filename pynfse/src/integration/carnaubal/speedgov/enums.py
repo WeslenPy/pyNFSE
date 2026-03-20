@@ -30,6 +30,7 @@ class NaturezaOperacao(IntEnum):
 class RegimeEspecialTributacao(IntEnum):
     """Regime especial de tributação (InfRps.RegimeEspecialTributacao)."""
 
+    NENHUM = 0
     MICROEMPRESA_MUNICIPAL = 1
     ESTIMATIVA = 2
     SOCIEDADE_DE_PROFISSIONAIS = 3
@@ -110,10 +111,10 @@ class TipoRetencaoIssqn(IntEnum):
 
 class OptanteSimplesNacionalDPS(IntEnum):
     """Optante Simples Nacional (DadosDPS.op_simp_nac): 1=Não optante, 2=Optante ME/EPP, 3=MEI."""
-
+    
     NAO_OPTANTE = 1
-    OPTANTE_ME_EPP = 2
-    MEI = 3
+    OPTANTE_ME_EPP = 3
+    MEI = 2
 
 
 class RegimeApuracaoTributosSN(IntEnum):

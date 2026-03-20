@@ -32,7 +32,7 @@ def calc_base_calculo(valor_servicos: float, valor_deducoes: float) -> Decimal:
 def calc_valor_iss(base_calculo: float, aliquota: float) -> Decimal:
     """ValorIss = BaseCalculo * Aliquota."""
     bc = _to_decimal(base_calculo)
-    aliq = _to_decimal(aliquota)
+    aliq = _to_decimal((aliquota/100))
     return _round2(bc * aliq)
 
 
