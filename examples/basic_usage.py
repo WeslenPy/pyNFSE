@@ -289,7 +289,7 @@ def exemplo_uso_com_api():
     
     # Exemplo de como seria o uso (comentado porque requer implementação concreta)
     """
-    from pynfse.src.common.api import NFSeBase
+    from pynfse.common.api import NFSeBase
     
     # Inicializar cliente NFSE
     nfse_client = NFSeBase(

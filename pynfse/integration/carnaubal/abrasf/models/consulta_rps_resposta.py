@@ -1,0 +1,1 @@
+from pynfse.integration.carnaubal.abrasf.models.respostas import ConsultarNfseRpsResposta

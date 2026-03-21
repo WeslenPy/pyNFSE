@@ -2,18 +2,18 @@ import pytest
 from datetime import datetime, date
 from lxml import etree
 from pydantic import ValidationError
-from pynfse.src.integration.carnaubal.abrasf.models.rps import (
+from pynfse.integration.carnaubal.abrasf.models.rps import (
     Rps, InfRps, IdentificacaoRps, IdentificacaoPrestador, 
     DadosTomador, IdentificacaoTomador, DadosServico, Valores
 )
-from pynfse.src.integration.carnaubal.abrasf.models.lote import LoteRps, ListaRps, EnviarLoteRpsEnvio
-from pynfse.src.integration.carnaubal.abrasf.models.cancelamento import (
+from pynfse.integration.carnaubal.abrasf.models.lote import LoteRps, ListaRps, EnviarLoteRpsEnvio
+from pynfse.integration.carnaubal.abrasf.models.cancelamento import (
     CancelarNfseEnvio, PedidoCancelamento, InfPedidoCancelamento, IdentificacaoNfse
 )
-from pynfse.src.integration.carnaubal.abrasf.models.consulta import ConsultarNfseEnvio, PeriodoEmissao
-from pynfse.src.integration.carnaubal.abrasf.models.consultar_lote import ConsultarLoteRpsEnvio, ConsultarSituacaoLoteRpsEnvio
-from pynfse.src.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
-from pynfse.src.integration.carnaubal.abrasf.models.base import CpfCnpj
+from pynfse.integration.carnaubal.abrasf.models.consulta import ConsultarNfseEnvio, PeriodoEmissao
+from pynfse.integration.carnaubal.abrasf.models.consultar_lote import ConsultarLoteRpsEnvio, ConsultarSituacaoLoteRpsEnvio
+from pynfse.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
+from pynfse.integration.carnaubal.abrasf.models.base import CpfCnpj
 
 
 def _parse_xml(xml: str) -> etree._Element:

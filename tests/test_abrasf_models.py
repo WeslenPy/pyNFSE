@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime
-from pynfse.src.integration.carnaubal.abrasf.models.base import CpfCnpj, Endereco
-from pynfse.src.integration.carnaubal.abrasf.models.rps import Rps, InfRps, IdentificacaoRps, IdentificacaoPrestador, DadosTomador, IdentificacaoTomador, DadosServico, Valores
-from pynfse.src.integration.carnaubal.abrasf.models.lote import LoteRps, ListaRps, EnviarLoteRpsEnvio
+from pynfse.integration.carnaubal.abrasf.models.base import CpfCnpj, Endereco
+from pynfse.integration.carnaubal.abrasf.models.rps import Rps, InfRps, IdentificacaoRps, IdentificacaoPrestador, DadosTomador, IdentificacaoTomador, DadosServico, Valores
+from pynfse.integration.carnaubal.abrasf.models.lote import LoteRps, ListaRps, EnviarLoteRpsEnvio
 
 def test_xml_node_to_xml():
     """Testa a conversão de um nó simples para XML."""

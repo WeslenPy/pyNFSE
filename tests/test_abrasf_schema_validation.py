@@ -2,8 +2,8 @@ from datetime import datetime
 
 from lxml import etree
 
-from pynfse.src.integration.carnaubal.abrasf.models.base import ListaMensagemRetorno, MensagemRetorno
-from pynfse.src.integration.carnaubal.abrasf.models.rps import (
+from pynfse.integration.carnaubal.abrasf.models.base import ListaMensagemRetorno, MensagemRetorno
+from pynfse.integration.carnaubal.abrasf.models.rps import (
     DadosServico,
     DadosTomador,
     IdentificacaoPrestador,
@@ -12,7 +12,7 @@ from pynfse.src.integration.carnaubal.abrasf.models.rps import (
     Rps,
     Valores,
 )
-from pynfse.src.integration.carnaubal.abrasf.models.respostas import (
+from pynfse.integration.carnaubal.abrasf.models.respostas import (
     CancelarNfseResposta,
     ConsultarLoteRpsResposta,
     ConsultarNfseResposta,
@@ -20,8 +20,8 @@ from pynfse.src.integration.carnaubal.abrasf.models.respostas import (
     ConsultarSituacaoLoteRpsResposta,
     EnviarLoteRpsResposta,
 )
-from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
-from pynfse.src.integration.carnaubal.abrasf.schema_validation import validate_xml
+from pynfse.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
+from pynfse.integration.carnaubal.abrasf.schema_validation import validate_xml
 
 
 def _extract_cdata_payload(soap_xml: str, tag_name: str) -> str:

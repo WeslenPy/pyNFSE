@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import Mock
 from requests import Response
 
-from pynfse.src.common.response import ResponseNFSE
+from pynfse.common.response import ResponseNFSE
 
 
 class TestResponseNFSE:

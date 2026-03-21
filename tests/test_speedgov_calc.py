@@ -4,7 +4,7 @@ from decimal import Decimal
 from datetime import datetime
 from lxml import etree
 
-from pynfse.src.integration.carnaubal.speedgov.helper.calc import (
+from pynfse.integration.carnaubal.speedgov.helper.calc import (
     calc_base_calculo,
     calc_valor_iss,
     calc_pis_valor,
@@ -16,7 +16,7 @@ from pynfse.src.integration.carnaubal.speedgov.helper.calc import (
     calc_valor_tributo,
     calc_diferido,
 )
-from pynfse.src.integration.carnaubal.speedgov.models.rps import (
+from pynfse.integration.carnaubal.speedgov.models.rps import (
     Valores,
     IBSCBS,
     InfRps,
@@ -26,10 +26,10 @@ from pynfse.src.integration.carnaubal.speedgov.models.rps import (
     DadosTomador,
     IdentificacaoTomador,
 )
-from pynfse.src.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco
-from pynfse.src.integration.carnaubal.speedgov.constants import ENVIO_NS, TIPOS_NS, XMLDSIG_NS, XSI_NS
-from pynfse.src.integration.carnaubal.speedgov.models.lote import EnviarLoteRpsEnvio
-from pynfse.src.integration.carnaubal.speedgov.models.lote import LoteRps, ListaRps
+from pynfse.integration.carnaubal.speedgov.models.base import CpfCnpj, Endereco
+from pynfse.integration.carnaubal.speedgov.constants import ENVIO_NS, TIPOS_NS, XMLDSIG_NS, XSI_NS
+from pynfse.integration.carnaubal.speedgov.models.lote import EnviarLoteRpsEnvio
+from pynfse.integration.carnaubal.speedgov.models.lote import LoteRps, ListaRps
 
 
 # --- Testes das funções de cálculo puras ---
@@ -444,7 +444,7 @@ class TestIBSCBSDiferimento:
 class TestXmlValoresCalculados:
     def test_xml_contem_valores_calculados(self):
         """O XML gerado deve conter os valores calculados corretamente."""
-        from pynfse.src.integration.carnaubal.speedgov.models.rps import Rps
+        from pynfse.integration.carnaubal.speedgov.models.rps import Rps
 
         rps = Rps(
             inf_rps=InfRps(

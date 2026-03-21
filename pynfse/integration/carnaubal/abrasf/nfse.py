@@ -1,0 +1,536 @@
+from datetime import datetime
+from typing import Optional, List, Union, Dict, Any
+import base64
+import requests
+from pathlib import Path
+from urllib.parse import urlparse
+
+from lxml import etree
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import pkcs12
+from signxml import XMLSigner, methods
+from loguru import logger
+
+from pynfse.common.api import NFSeBase
+from pynfse.common.xml import XMLBase
+from pynfse.common.signature import (
+    Signature,
+    SignedInfo,
+    CanonicalizationMethod,
+    SignatureMethod,
+    Reference,
+    Transforms,
+    Transform,
+    DigestMethod,
+    KeyInfo,
+    X509Data
+)
+from pynfse.integration.carnaubal.abrasf.models.cancelamento import (
+    CancelarNfseEnvio,
+    InfPedidoCancelamento,
+    PedidoCancelamento,
+    IdentificacaoNfse
+)
+from pynfse.integration.carnaubal.abrasf.models.consulta import ConsultarNfseEnvio
+from pynfse.integration.carnaubal.abrasf.models.consultar_lote import (
+    ConsultarLoteRpsEnvio,
+    ConsultarSituacaoLoteRpsEnvio,
+)
+from pynfse.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
+from pynfse.integration.carnaubal.abrasf.models.lote import (
+    ListaRps,
+    LoteRps as LoteRpsModel,
+    EnviarLoteRpsEnvio
+)
+from pynfse.integration.carnaubal.abrasf.models.rps import (
+    CpfCnpj,
+    Contato,
+    DadosServico,
+    DadosTomador,
+    Endereco,
+    IdentificacaoPrestador,
+    IdentificacaoRps,
+    IdentificacaoTomador,
+    InfRps,
+    Rps as RpsModel,
+    Valores
+)
+
+
+class LegacyXMLSigner(XMLSigner):
+    """Permite algoritmos legados exigidos pelo provedor."""
+
+    def check_deprecated_methods(self):
+        return None
+
+
+class CarnaubalNFSe(NFSeBase):
+    """
+    Implementação do provedor Carnaubal seguindo o padrão ABRASF v1.
+    Utiliza modelos Pydantic para geração de XML e envelope SOAP compatível com os XMLs de referência do SpeedGov.
+    """
+
+    XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
+    XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
+    TIPOS_NS = "http://ws.speedgov.com.br/tipos_v1.xsd"
+    ENVIAR_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/enviar_lote_rps_envio_v1.xsd"
+    CANCELAR_NFSE_ENVIO_NS = "http://ws.speedgov.com.br/cancelar_nfse_envio_v1.xsd"
+    CONSULTAR_NFSE_ENVIO_NS = "http://ws.speedgov.com.br/consultar_nfse_envio_v1.xsd"
+    CONSULTAR_NFSE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_nfse_rps_envio_v1.xsd"
+    CONSULTAR_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_lote_rps_envio_v1.xsd"
+    CONSULTAR_SITUACAO_LOTE_RPS_ENVIO_NS = "http://ws.speedgov.com.br/consultar_situacao_lote_rps_envio_v1.xsd"
+
+    def __init__(self, URL: str, **kwargs):
+        super().__init__(URL, **kwargs)
+
+        self._cert_cache: Dict[str, bytes] = {}
+        self._xml_cache: Dict[str, bytes] = {}
+
+    def get_certificate(self, path_or_url: str, use_cache: bool = True) -> bytes:
+        """
+        Obtém o conteúdo do certificado de uma URL ou caminho local.
+        Se for uma URL, faz o download. Se for um caminho, lê do disco.
+        Mapeia em um dicionário de cache para evitar leituras/downloads repetidos.
+        """
+        if use_cache and path_or_url in self._cert_cache:
+            logger.debug(f"Recuperando certificado do cache: {path_or_url}")
+            return self._cert_cache[path_or_url]
+
+        # Verifica se é uma URL
+        parsed = urlparse(path_or_url)
+        is_url = parsed.scheme in ('http', 'https')
+
+        try:
+            if is_url:
+                logger.debug(f"Baixando certificado da URL: {path_or_url}")
+                response = requests.get(path_or_url, verify=False, timeout=30)
+                response.raise_for_status()
+                content = response.content
+            else:
+                logger.debug(f"Lendo certificado do arquivo local: {path_or_url}")
+                path = Path(path_or_url)
+                if not path.is_file():
+                    raise FileNotFoundError(f"Arquivo de certificado não encontrado: {path_or_url}")
+                content = path.read_bytes()
+
+            if use_cache:
+                self._cert_cache[path_or_url] = content
+            
+            return content
+
+        except Exception as e:
+            logger.error(f"Erro ao obter certificado ({path_or_url}): {str(e)}")
+            raise ValueError(f"Não foi possível obter o certificado: {str(e)}")
+
+    def get_xml_base(self) -> XMLBase:
+        """Retorna uma instância concreta de XMLBase."""
+        class ConcreteXMLBase(XMLBase):
+            def create_rps_nfse(self, lote): pass
+            def create_cancel_nfse(self, nfse): pass
+            def create_consult_nfse(self, nfse): pass
+        return ConcreteXMLBase()
+
+    def _get_default_header(self) -> str:
+        """Retorna o cabeçalho XML padrão (novo padrão: default namespace + versaoDados xmlns='')."""
+        schema_location = "http://ws.speedgov.com.br/cabecalho_v1.xsd"
+        root = etree.Element(
+            f"{{{schema_location}}}cabecalho",
+            nsmap={None: schema_location},
+        )
+        root.set("versao", "1")
+        versao = etree.SubElement(root, "versaoDados", nsmap={None: ""})
+        versao.text = "1"
+        return etree.tostring(
+            root,
+            encoding="UTF-8",
+            xml_declaration=False,
+            pretty_print=False,
+        ).decode("utf-8")
+
+    def _get_request_nsmap(self, schema_location: str) -> Dict[str, str]:
+        """Namespace padrão para EnviarLoteRpsEnvio: default xmlns (sem prefixos p:, p1:)."""
+        return {None: schema_location}
+
+    def _serialize_request_model(
+        self,
+        model: Any,
+        root_tag: str,
+        schema_location: str,
+    ) -> str:
+        element = model.to_element(
+            tag_name=root_tag,
+            namespace=schema_location,
+            nsmap=self._get_request_nsmap(schema_location),
+        )
+        return etree.tostring(
+            element,
+            encoding="UTF-8",
+            xml_declaration=False,
+            pretty_print=False,
+        ).decode("utf-8")
+
+    def _load_certificate(self, certificate_data: bytes, password: Optional[str] = None):
+        """
+        Carrega o certificado PEM ou PFX e retorna a chave privada e o certificado público.
+        """
+        try:
+            # Tenta carregar como PKCS12 (PFX)
+            private_key, certificate, additional_certificates = pkcs12.load_key_and_certificates(
+                certificate_data,
+                password.encode() if password else None
+            )
+            return private_key, certificate
+        except Exception:
+            # Tenta carregar como PEM
+            try:
+                private_key = serialization.load_pem_private_key(
+                    certificate_data,
+                    password=password.encode() if password else None
+                )
+                certificate = x509.load_pem_x509_certificate(certificate_data)
+                return private_key, certificate
+            except Exception as e:
+                raise ValueError(f"Erro ao carregar certificado (PEM/PFX): {str(e)}")
+
+    def get_cnpj_from_certificate(self, cert: x509.Certificate) -> Optional[str]:
+        """
+        Extrai o CNPJ de uma instância de x509.Certificate.
+        O CNPJ em certificados brasileiros (ICP-Brasil) geralmente está no campo Subject Alternative Name (SAN)
+        ou no Common Name (CN) seguindo padrões específicos.
+        """
+        try:
+            # 1. Tenta extrair do Subject Alternative Name (SAN) - Padrão ICP-Brasil
+            try:
+                san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+                for name in san.value:
+                    if isinstance(name, x509.OtherName):
+                        # O OID do CNPJ no ICP-Brasil é 2.16.76.1.3.3
+                        if name.type_id.dotted_string == "2.16.76.1.3.3":
+                            # O valor é uma string ASN.1, pegamos apenas os números
+                            import re
+                            cnpj = re.sub(r"\D", "", name.value.decode(errors='ignore'))
+                            if len(cnpj) == 14:
+                                return cnpj
+            except Exception:
+                pass
+
+            # 2. Fallback: Tenta extrair do Common Name (CN)
+            # Geralmente no formato: NOME DA EMPRESA:00000000000000
+            common_names = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+            if common_names:
+                cn_value = common_names[0].value
+                if ":" in cn_value:
+                    cnpj = cn_value.split(":")[-1].strip()
+                    import re
+                    cnpj = re.sub(r"\D", "", cnpj)
+                    if len(cnpj) == 14:
+                        return cnpj
+            
+            return None
+        except Exception as e:
+            logger.error(f"Erro ao extrair CNPJ do certificado: {str(e)}")
+            return None
+
+    def generate_signature(
+        self,
+        xml_element: etree._Element,
+        certificate_data: bytes,
+        password: Optional[str] = None,
+        reference_uri: Optional[str] = None,
+    ) -> Signature:
+        """
+        Gera a assinatura digital para um elemento XML usando um certificado PEM ou PFX.
+        Retorna um objeto Signature (Pydantic).
+        reference_uri: URI da referência (ex: "#L1" para LoteRps com Id="L1").
+        """
+        private_key, certificate = self._load_certificate(certificate_data, password)
+        
+        # Prepara o assinador XML
+        signer = LegacyXMLSigner(
+            method=methods.enveloped,
+            signature_algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+            digest_algorithm="sha1",
+            c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+        )
+        
+        sign_kwargs: Dict[str, Any] = {
+            "key": private_key,
+            "cert": [certificate],
+        }
+        if reference_uri:
+            sign_kwargs["reference_uri"] = reference_uri
+        
+        # Assina o elemento
+        signed_root = signer.sign(xml_element, **sign_kwargs)
+        
+        # Extrai o nó Signature
+        signature_node = signed_root.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature")
+        if signature_node is None:
+            if signed_root.tag == "{http://www.w3.org/2000/09/xmldsig#}Signature":
+                signature_node = signed_root
+            else:
+                raise ValueError("Não foi possível encontrar o nó Signature no XML assinado.")
+
+        
+        # Namespace para busca no XML assinado pelo signxml
+        ns_search = {"ds": "http://www.w3.org/2000/09/xmldsig#"}
+        
+        signed_info_node = signature_node.find("ds:SignedInfo", ns_search)
+        signature_value = signature_node.find("ds:SignatureValue", ns_search).text.strip()
+        
+        # SignedInfo details
+        c14n_method = signed_info_node.find("ds:CanonicalizationMethod", ns_search).get("Algorithm")
+        sig_method = signed_info_node.find("ds:SignatureMethod", ns_search).get("Algorithm")
+        
+        references = []
+        for ref_node in signed_info_node.findall("ds:Reference", ns_search):
+            uri = ref_node.get("URI")
+            digest_method = ref_node.find("ds:DigestMethod", ns_search).get("Algorithm")
+            digest_value = ref_node.find("ds:DigestValue", ns_search).text.strip()
+            
+            transforms_list = []
+            transforms_node = ref_node.find("ds:Transforms", ns_search)
+            if transforms_node is not None:
+                for trans_node in transforms_node.findall("ds:Transform", ns_search):
+                    transforms_list.append(Transform(algorithm=trans_node.get("Algorithm")))
+            
+            references.append(Reference(
+                uri=uri,
+                transforms=Transforms(transform=transforms_list) if transforms_list else None,
+                digest_method=DigestMethod(algorithm=digest_method),
+                digest_value=digest_value
+            ))
+            
+        signed_info = SignedInfo(
+            canonicalization_method=CanonicalizationMethod(algorithm=c14n_method),
+            signature_method=SignatureMethod(algorithm=sig_method),
+            reference=references
+        )
+        
+        # KeyInfo
+        cert_b64 = base64.b64encode(certificate.public_bytes(serialization.Encoding.DER)).decode("utf-8")
+        key_info = KeyInfo(x509_data=X509Data(x509_certificate=cert_b64))
+        
+        return Signature(
+            signed_info=signed_info,
+            signature_value=signature_value,
+            key_info=key_info
+        )
+
+    def create_rps_nfse(self, rps_list: List[RpsModel], 
+                        numero_lote: int, cnpj: str, 
+                        inscricao_municipal: str, 
+                        signature: Optional[Signature] = None,
+                        certificate_data: Optional[bytes] = None,
+                        certificate_password: Optional[str] = None,
+                        lote_id: Optional[str] = None) -> str:
+        """
+        Cria XML de envio de Lote RPS.
+        Quando certificate_data e certificate_password são informados, a assinatura
+        é gerada corretamente sobre o LoteRps (Reference URI="#L{numero_lote}").
+        Caso contrário, usa a assinatura pré-computada passada em signature (legado).
+
+        Args:
+            lote_id: Id do LoteRps (ex: "lote_001"). Se não informado, usa "L{numero_lote}".
+        """
+        lote_id = lote_id or f"L{numero_lote}"
+        lote_model = LoteRpsModel(
+            id=lote_id,
+            numero_lote=numero_lote,
+            cnpj=cnpj,
+            inscricao_municipal=inscricao_municipal,
+            quantidade_rps=len(rps_list),
+            lista_rps=ListaRps(rps=rps_list),
+            
+        )
+        
+        # if certificate_data is not None:
+        #     signature = self._generate_lote_signature(
+        #         lote_model=lote_model,
+        #         certificate_data=certificate_data,
+        #         password=certificate_password,
+        #         lote_id=lote_id,
+        #     )
+        # else:
+        #     signature = signature
+        
+
+        envio_model = EnviarLoteRpsEnvio(lote_rps=lote_model, signature=signature)
+
+        body_content = self._serialize_request_model(
+            envio_model,
+            "EnviarLoteRpsEnvio",
+            self.ENVIAR_LOTE_RPS_ENVIO_NS,
+        )
+        
+        return self.get_xml_base().create_soap_envelope(
+            body_content=body_content,
+            method_name="RecepcionarLoteRps",
+            header_content=self._get_default_header()
+        )
+
+    def _generate_lote_signature(
+        self,
+        lote_model: LoteRpsModel,
+        certificate_data: bytes,
+        password: Optional[str],
+        lote_id: str,
+    ) -> Signature:
+        """
+        Gera assinatura do LoteRps com Reference URI apontando para o Id do lote.
+        """
+        envio_model = EnviarLoteRpsEnvio(lote_rps=lote_model, signature=None)
+        element = envio_model.to_element(
+            tag_name="EnviarLoteRpsEnvio",
+            namespace=self.ENVIAR_LOTE_RPS_ENVIO_NS,
+            nsmap=self._get_request_nsmap(self.ENVIAR_LOTE_RPS_ENVIO_NS),
+        )
+        reference_uri = f"#{lote_id}"
+        return self.generate_signature(
+            element,
+            certificate_data,
+            password=password,
+            reference_uri=reference_uri,
+        )
+    
+    def create_cancel_nfse(self, numero_nfse: int, cnpj: str, 
+                           inscricao_municipal: str, 
+                           codigo_municipio: int, 
+                           codigo_cancelamento: str) -> str:
+        
+        """Cria XML para cancelamento de NFSE."""
+        pedido = PedidoCancelamento(
+            inf_pedido_cancelamento=InfPedidoCancelamento(
+                id="",
+                identificacao_nfse=IdentificacaoNfse(
+                    numero=numero_nfse,
+                    cnpj=cnpj,
+                    inscricao_municipal=inscricao_municipal,
+                    codigo_municipio=codigo_municipio
+                ),
+                codigo_cancelamento=codigo_cancelamento
+            )
+        )
+        
+        return self.get_xml_base().create_soap_envelope(
+            body_content=self._serialize_request_model(
+                CancelarNfseEnvio(pedido=pedido),
+                "CancelarNfseEnvio",
+                self.CANCELAR_NFSE_ENVIO_NS,
+            ),
+            method_name="CancelarNfse",
+            header_content=self._get_default_header()
+        )
+    
+    def create_consult_nfse(self, cnpj: str, 
+                            inscricao_municipal: str, 
+                            numero_nfse: Optional[int] = None) -> str:
+        """Cria XML para consulta de NFSE."""
+        consulta = ConsultarNfseEnvio(
+            prestador=IdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal
+            ),
+            numero_nfse=numero_nfse
+        )
+        
+        return self.get_xml_base().create_soap_envelope(
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarNfseEnvio",
+                self.CONSULTAR_NFSE_ENVIO_NS,
+            ),
+            method_name="ConsultarNfse",
+            header_content=self._get_default_header()
+        )
+
+    def create_consult_rps(self, numero: int, serie: str, 
+                           tipo: int, cnpj: str, 
+                           inscricao_municipal: str = None) -> str:
+        """Cria XML para consulta de NFSe por RPS."""
+        consulta = ConsultarNfseRpsEnvio(
+            identificacao_rps=IdentificacaoRps(
+                numero=numero,
+                serie=serie,
+                tipo=tipo
+            ),
+            prestador=IdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal
+            )
+        )
+        
+        return self.get_xml_base().create_soap_envelope(
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarNfseRpsEnvio",
+                self.CONSULTAR_NFSE_RPS_ENVIO_NS,
+            ),
+            method_name="ConsultarNfsePorRps",
+            header_content=self._get_default_header()
+        )
+
+    def create_consult_lote_rps(self, protocolo: str, cnpj: str, inscricao_municipal: str) -> str:
+        """Cria XML para consulta de lote de RPS por protocolo."""
+        consulta = ConsultarLoteRpsEnvio(
+            id="",
+            prestador=IdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
+            protocolo=protocolo,
+        )
+
+        return self.get_xml_base().create_soap_envelope(
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarLoteRpsEnvio",
+                self.CONSULTAR_LOTE_RPS_ENVIO_NS,
+            ),
+            method_name="ConsultarLoteRps",
+            header_content=self._get_default_header(),
+        )
+
+    def create_consult_situacao_lote_rps(self, protocolo: str, cnpj: str, inscricao_municipal: str) -> str:
+        """Cria XML para consulta de situação de lote de RPS por protocolo."""
+        consulta = ConsultarSituacaoLoteRpsEnvio(
+            id="",
+            prestador=IdentificacaoPrestador(
+                cnpj=cnpj,
+                inscricao_municipal=inscricao_municipal,
+            ),
+            protocolo=protocolo,
+        )
+
+        return self.get_xml_base().create_soap_envelope(
+            body_content=self._serialize_request_model(
+                consulta,
+                "ConsultarSituacaoLoteRpsEnvio",
+                self.CONSULTAR_SITUACAO_LOTE_RPS_ENVIO_NS,
+            ),
+            method_name="ConsultarSituacaoLoteRps",
+            header_content=self._get_default_header(),
+        )
+
+    def get_xml_from_url(self, url: str, use_cache: bool = True) -> bytes:
+        """
+        Baixa o conteúdo XML de uma URL e armazena em um dicionário de cache.
+        """
+        if use_cache and url in self._xml_cache:
+            logger.debug(f"Recuperando XML do cache: {url}")
+            return self._xml_cache[url]
+
+        try:
+            logger.debug(f"Baixando XML da URL: {url}")
+            response = requests.get(url, verify=False, timeout=30)
+            response.raise_for_status()
+            
+            content = response.content
+            if use_cache:
+                self._xml_cache[url] = content
+                
+            return content
+        except Exception as e:
+            logger.error(f"Erro ao baixar XML da URL {url}: {str(e)}")
+            raise ValueError(f"Não foi possível obter o XML da URL: {str(e)}")

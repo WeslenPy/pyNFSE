@@ -8,9 +8,9 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 
-from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
-from pynfse.src.integration.carnaubal.abrasf.models.rps import Rps, InfRps, IdentificacaoRps, DadosServico, Valores, IdentificacaoPrestador, DadosTomador
-from pynfse.src.common.signature import (
+from pynfse.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
+from pynfse.integration.carnaubal.abrasf.models.rps import Rps, InfRps, IdentificacaoRps, DadosServico, Valores, IdentificacaoPrestador, DadosTomador
+from pynfse.common.signature import (
     Signature,
     SignedInfo,
     CanonicalizationMethod,

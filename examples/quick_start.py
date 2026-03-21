@@ -5,7 +5,7 @@ Este é um exemplo mínimo para começar a usar a biblioteca rapidamente.
 """
 
 from pynfse.schemas.lote import LoteRps
-from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
+from pynfse.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
 
 from datetime import date
 from pynfse.schemas.nfse import (

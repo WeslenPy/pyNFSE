@@ -4,7 +4,7 @@ from datetime import datetime, date
 from unittest.mock import Mock, MagicMock
 from requests import Response
 
-from pynfse.src.integration.carnaubal.abrasf.models.rps import (
+from pynfse.integration.carnaubal.abrasf.models.rps import (
     InfRps as InfoRPS,
     IdentificacaoRps as IdentificationNFSE,
     Valores as ValuesNFSE,
@@ -14,13 +14,13 @@ from pynfse.src.integration.carnaubal.abrasf.models.rps import (
     Endereco as AddressNFSE,
     DadosTomador as CostumerNFSE,
 )
-from pynfse.src.integration.carnaubal.abrasf.models.cancelamento import (
+from pynfse.integration.carnaubal.abrasf.models.cancelamento import (
     CancelarNfseEnvio as CancelNFSE,
 )
-from pynfse.src.integration.carnaubal.abrasf.models.consulta import (
+from pynfse.integration.carnaubal.abrasf.models.consulta import (
     ConsultarNfseEnvio as ConsultNFSE,
 )
-from pynfse.src.integration.carnaubal.abrasf.models.consultar_rps import (
+from pynfse.integration.carnaubal.abrasf.models.consultar_rps import (
     ConsultarNfseRpsEnvio as ConsultLoteRPS,
 )
 # BaseNFSE, ConsultLoteNFSE não têm equivalentes diretos simples ou não são mais usados assim
@@ -85,7 +85,7 @@ def sample_address_nfse():
 @pytest.fixture
 def sample_identification_costumer_nfse():
     """Fixture para IdentificationCostumerNFSE."""
-    from pynfse.src.integration.carnaubal.abrasf.models.base import CpfCnpj
+    from pynfse.integration.carnaubal.abrasf.models.base import CpfCnpj
     return IdentificationCostumerNFSE(
         cpf_cnpj=CpfCnpj(cpf="12345678901")
     )
@@ -150,7 +150,7 @@ def sample_base_nfse():
 @pytest.fixture
 def sample_cancel_nfse():
     """Fixture para CancelNFSE."""
-    from pynfse.src.integration.carnaubal.abrasf.models.cancelamento import PedidoCancelamento, InfPedidoCancelamento, IdentificacaoNfse
+    from pynfse.integration.carnaubal.abrasf.models.cancelamento import PedidoCancelamento, InfPedidoCancelamento, IdentificacaoNfse
     return CancelNFSE(
         pedido=PedidoCancelamento(
             inf_pedido_cancelamento=InfPedidoCancelamento(

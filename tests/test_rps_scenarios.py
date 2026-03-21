@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime
 from lxml import etree
-from pynfse.src.integration.carnaubal.abrasf.models.base import CpfCnpj, Endereco, Contato
-from pynfse.src.integration.carnaubal.abrasf.models.rps import (
+from pynfse.integration.carnaubal.abrasf.models.base import CpfCnpj, Endereco, Contato
+from pynfse.integration.carnaubal.abrasf.models.rps import (
     Rps, InfRps, IdentificacaoRps, IdentificacaoPrestador, 
     DadosTomador, IdentificacaoTomador, DadosServico, Valores,
     IdentificacaoIntermediarioServico, DadosConstrucaoCivil,
@@ -10,7 +10,7 @@ from pynfse.src.integration.carnaubal.abrasf.models.rps import (
     ExigibilidadeSuspensa, BeneficioMunicipal, ReembolsoRepasse,
     Destinatario, ControleIBSCBS, IBSCBS
 )
-from pynfse.src.integration.carnaubal.abrasf.models.lote import LoteRps, ListaRps
+from pynfse.integration.carnaubal.abrasf.models.lote import LoteRps, ListaRps
 
 
 def _parse_xml(xml: str) -> etree._Element:
@@ -178,7 +178,7 @@ def test_rps_comercio_exterior_e_ibscbs():
     assert "<IBSUFAliquota>0.02</IBSUFAliquota>" in xml
     assert "<IBSValorTotal>250.0</IBSValorTotal>" in xml
 
-from pynfse.src.common.signature import (
+from pynfse.common.signature import (
     Signature, SignedInfo, CanonicalizationMethod, SignatureMethod, 
     Reference, Transforms, Transform, DigestMethod, KeyInfo, X509Data
 )
@@ -283,7 +283,7 @@ def test_lote_com_assinatura():
 
 def test_consultar_rps_xml():
     """Cenário 8: XML de Consulta de NFSe por RPS"""
-    from pynfse.src.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
+    from pynfse.integration.carnaubal.abrasf.models.consultar_rps import ConsultarNfseRpsEnvio
     
     consulta = ConsultarNfseRpsEnvio(
         identificacao_rps=IdentificacaoRps(numero=123, serie="A", tipo=1),

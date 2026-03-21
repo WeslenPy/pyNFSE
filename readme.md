@@ -41,7 +41,7 @@ pynfse/
 ### 1. Configuração do Provedor
 
 ```python
-from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
+from pynfse.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
 
 # Inicializa o provedor com a URL do Web Service
 provider = CarnaubalNFSe(URL="https://homologacao.speedgov.com.br/carnaubal/ws")
@@ -50,7 +50,7 @@ provider = CarnaubalNFSe(URL="https://homologacao.speedgov.com.br/carnaubal/ws")
 ### 2. Geração e Assinatura de Lote RPS
 
 ```python
-from pynfse.src.integration.carnaubal.abrasf.models.rps import Rps, InfRps
+from pynfse.integration.carnaubal.abrasf.models.rps import Rps, InfRps
 # ... importe outros modelos necessários (IdentificacaoRps, DadosServico, etc)
 
 # 1. Carrega o certificado (URL ou Local)
@@ -71,7 +71,7 @@ xml_final = lote_model.to_xml()
 ### 3. Processamento de Resposta
 
 ```python
-from pynfse.src.integration.carnaubal.abrasf.models.respostas import EnviarLoteRpsResposta
+from pynfse.integration.carnaubal.abrasf.models.respostas import EnviarLoteRpsResposta
 
 # Envia o XML e obtém a resposta bruta
 response_nfse = provider.send(xml_final)

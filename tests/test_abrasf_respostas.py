@@ -1,12 +1,12 @@
 import pytest
 from datetime import datetime, date
-from pynfse.src.integration.carnaubal.abrasf.models.respostas import (
+from pynfse.integration.carnaubal.abrasf.models.respostas import (
     EnviarLoteRpsResposta, ConsultarNfseRpsResposta, ConsultarNfseResposta,
     CancelarNfseResposta, ConsultarLoteRpsResposta, ConsultarSituacaoLoteRpsResposta,
     CompNfse, Nfse, InfNfse
 )
-from pynfse.src.integration.carnaubal.abrasf.models.base import ListaMensagemRetorno, MensagemRetorno
-from pynfse.src.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
+from pynfse.integration.carnaubal.abrasf.models.base import ListaMensagemRetorno, MensagemRetorno
+from pynfse.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
 
 @pytest.fixture
 def carnaubal_provider():
