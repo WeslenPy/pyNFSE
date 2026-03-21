@@ -40,8 +40,8 @@ class IdentificacaoIntermediarioServico(ABRASFTypesNode):
     nif: Optional[Annotated[str, StringConstraints(max_length=40)]] = Field(None, alias="NIF")
 
 class DadosConstrucaoCivil(ABRASFTypesNode):
-    codigo_obra: Annotated[str, StringConstraints(max_length=15)] = Field(..., alias="CodigoObra")
-    art: Annotated[str, StringConstraints(max_length=15)] = Field(..., alias="Art")
+    codigo_obra: Optional[Annotated[str, StringConstraints(max_length=15)]] = Field(None, alias="CodigoObra")
+    art: Optional[Annotated[str, StringConstraints(max_length=15)]] = Field(None, alias="Art")
 
 class DadosTomador(ABRASFTypesNode):
     identificacao_tomador: Optional[IdentificacaoTomador] = Field(None, alias="IdentificacaoTomador")

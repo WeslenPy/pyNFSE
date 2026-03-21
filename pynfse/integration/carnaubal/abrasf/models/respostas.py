@@ -30,7 +30,7 @@ class InfNfse(ABRASFNode):
     natureza_operacao: tsNaturezaOperacao = Field(..., alias="NaturezaOperacao")
     regime_especial_tributacao: Optional[tsRegimeEspecialTributacao] = Field(None, alias="RegimeEspecialTributacao")
     optante_simples_nacional: tsSimNao = Field(..., alias="OptanteSimplesNacional")
-    incentivador_cultural: tsSimNao = Field(..., alias="IncentivadorCultural")
+    incentivador_cultural: Optional[tsSimNao] = Field(None, alias="IncentivadorCultural")
     competencia: date = Field(..., alias="Competencia")
     nfse_substituida: Optional[tsNumeroNfse] = Field(None, alias="NfseSubstituida")
     outras_informacoes: Optional[tsOutrasInformacoes] = Field(None, alias="OutrasInformacoes")
@@ -120,6 +120,8 @@ class CancelarNfseResposta(ABRASFNode):
     )
 
 class ConsultarLoteRpsResposta(ABRASFNode):
+    sucesso: Optional[bool] = Field(None, alias="Sucesso")
+    data_hora: Optional[datetime] = Field(None, alias="DataHora")
     lista_nfse: Optional[ListaNfse] = Field(None, alias="ListaNfse")
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(
         None,
@@ -128,6 +130,8 @@ class ConsultarLoteRpsResposta(ABRASFNode):
     )
 
 class ConsultarSituacaoLoteRpsResposta(ABRASFNode):
+    sucesso: Optional[bool] = Field(None, alias="Sucesso")
+    data_hora: Optional[datetime] = Field(None, alias="DataHora")
     numero_lote: Optional[tsNumeroLote] = Field(None, alias="NumeroLote")
     situacao: Optional[tsSituacaoLoteRps] = Field(None, alias="Situacao")
     lista_mensagem_retorno: Optional[ListaMensagemRetorno] = Field(

@@ -1,15 +1,29 @@
 """
 Parser de respostas XML para modelos Pydantic.
 Converte XML de resposta SOAP em dict normalizado e popula classes Pydantic (xml -> pydantic).
+Suporta envelope SOAP com conteúdo em return (escapado) e extrai todos os dados em sucesso ou erro.
 """
 from __future__ import annotations
 
+import html
 from typing import Any, Dict, List, Optional, Type, TypeVar, get_origin, get_args
 
 import xmltodict
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
+
+
+def _unescape_and_parse(escaped_xml: str) -> Dict[str, Any]:
+    """Desescape HTML entities e parse o XML interno."""
+    unescaped = html.unescape(escaped_xml)
+    data = xmltodict.parse(
+        unescaped,
+        attr_prefix="",
+        cdata_key="text",
+        process_namespaces=False,
+    )
+    return _clean_dict(data)
 
 
 def _clean_dict(d: Any) -> Any:
@@ -59,14 +73,31 @@ def _find_resposta_root(content: Any, target_tag: Optional[str] = None) -> Dict[
         key = list(content.keys())[0]
         val = content[key]
         if key in RESPOSTA_ROOTS or (target_tag and key == target_tag):
-            # Retorna o conteúdo interno da tag de resposta
-            return val if isinstance(val, dict) else content
+            out = val if isinstance(val, dict) else content
+            return _normalize_resposta_dict(out)
+        # SOAP return com XML escapado: <return>&lt;ConsultarLoteRpsResposta&gt;...&lt;/ConsultarLoteRpsResposta&gt;</return>
+        if key.lower() == "return" and isinstance(val, str) and val.strip():
+            content = _unescape_and_parse(val)
+            continue
         if isinstance(val, dict):
             content = val
         else:
             break
 
-    return content if isinstance(content, dict) else {}
+    return _normalize_resposta_dict(content) if isinstance(content, dict) else {}
+
+
+def _normalize_resposta_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Converte MensagemRetorno (múltiplos diretos) em ListaMensagemRetorno."""
+    if not isinstance(data, dict):
+        return data
+    # xmltodict retorna MensagemRetorno como dict ou list quando há múltiplos
+    mr = data.get("MensagemRetorno")
+    if mr is not None and "ListaMensagemRetorno" not in data:
+        items = [mr] if isinstance(mr, dict) else mr
+        data = {**data, "ListaMensagemRetorno": {"MensagemRetorno": items}}
+        del data["MensagemRetorno"]
+    return data
 
 
 def _is_list_field(field_type: Any) -> bool:

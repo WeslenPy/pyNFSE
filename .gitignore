@@ -22,3 +22,6 @@ speedgov.py
 teste.xml
 
 consultar.py
+
+__pycache__/*
+__pycache__/

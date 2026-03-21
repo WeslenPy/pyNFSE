@@ -54,17 +54,8 @@ class NFSeBase:
     def send(self, xml: str)->ResponseNFSE:
         """Send the RPS to the NFSe"""
         
-        # xml = self.render(xml)
-        
-        # xml = xml.replace("ds:", "")
-        
-        logger.debug(xml)
-        
         response = self.session.post(url= self.URL,  data=xml)
 
-        logger.debug(f"Status Code: {response.status_code}")
-        logger.debug(f"Resposta do servidor: {response.text }")
-        
         return ResponseNFSE(xml,response)
 
     def parse_response(self, response_text: str) -> Dict[str, Any]:
