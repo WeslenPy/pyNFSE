@@ -2,7 +2,6 @@
 .venv
 venv/
 
-*.pyc
 signature.xml
 nf.xml
 *.pfx 

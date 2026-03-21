@@ -71,8 +71,8 @@ class SituacaoLoteRps(IntEnum):
 
     NAO_RECEBIDO = 1
     NAO_PROCESSADO = 2
-    PROCESSADO = 3
-    ERRO = 4
+    PROCESSADO_COM_ERRO = 3
+    PROCESSADO_COM_SUCESSO = 4
 
 
 # --- DadosDPS (NFS-e Nacional) ---

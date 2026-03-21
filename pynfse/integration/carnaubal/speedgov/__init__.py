@@ -23,6 +23,8 @@ from pynfse.integration.carnaubal.speedgov.enums import (
     IndicadorFinal,
     IndicadorDestino,
 )
+
+
 from pynfse.integration.carnaubal.speedgov.helper import calc as calc  # noqa: F401 - funções de cálculo automático
 from pynfse.integration.carnaubal.speedgov.models import (
     Rps,
