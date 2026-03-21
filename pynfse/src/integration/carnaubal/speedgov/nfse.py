@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Type, TypeVar
 from urllib.parse import urlparse
 
+from loguru import logger
 import requests
 from lxml import etree
 from pydantic import BaseModel
