@@ -192,6 +192,6 @@ class Endereco(SpeedGovNode):
     numero: str = Field(..., alias="Numero", max_length=10)
     complemento: Optional[str] = Field(None, alias="Complemento", max_length=60)
     bairro: str = Field(..., alias="Bairro", max_length=60)
-    codigo_municipio: int = Field(..., alias="CodigoMunicipio", ge=0, le=9999999)
+    codigo_municipio: Optional[int] = Field(..., alias="CodigoMunicipio", ge=0, le=9999999)
     uf: str = Field(..., alias="Uf", min_length=2, max_length=2)
     cep: str = Field(..., alias="Cep", max_length=10)
