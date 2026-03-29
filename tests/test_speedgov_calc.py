@@ -45,7 +45,7 @@ class TestCalcBaseCalculo:
 
 class TestCalcValorIss:
     def test_basico(self):
-        assert calc_valor_iss(9500, 0.05) == Decimal("475.00")
+        assert calc_valor_iss(9500, 5.00) == Decimal("475.00")
 
     def test_zero(self):
         assert calc_valor_iss(100, 0) == Decimal("0.00")
@@ -129,13 +129,13 @@ class TestCalcValorTotalComTributos:
 class TestValoresValidator:
     def test_minimal_valor_servicos_aliquota(self):
         """Apenas valor_servicos e aliquota -> base, iss, liquido calculados."""
-        v = Valores(valor_servicos=100, aliquota=0.05)
+        v = Valores(valor_servicos=100, aliquota=5.00)
         assert v.base_calculo == 100.0
         assert v.valor_iss == 5.0
         assert v.valor_liquido_nfse == 95.0
 
     def test_com_deducoes(self):
-        v = Valores(valor_servicos=10000, valor_deducoes=500, aliquota=0.05)
+        v = Valores(valor_servicos=10000, valor_deducoes=500, aliquota=5.00)
         assert v.base_calculo == 9500.0
         assert v.valor_iss == 475.0
 
@@ -143,7 +143,7 @@ class TestValoresValidator:
         """Valores informados pelo usuário permanecem."""
         v = Valores(
             valor_servicos=100,
-            aliquota=0.05,
+            aliquota=5.00,
             base_calculo=95.0,
             valor_iss=4.75,
         )
@@ -153,7 +153,7 @@ class TestValoresValidator:
     def test_pis_cofins_calculados_quando_aliq_informada(self):
         v = Valores(
             valor_servicos=9500,
-            aliquota=0.05,
+            aliquota=5.00,
             base_calculo_pis_cofins=9500,
             aliq_pis=0.0068,
             aliq_cofins=0.0316,
@@ -193,7 +193,7 @@ class TestInfRpsValorTotalComTributos:
             regime_especial_tributacao=1,
             optante_simples_nacional=2,
             servico=DadosServico(
-                valores=Valores(valor_servicos=100, aliquota=0.05),
+                valores=Valores(valor_servicos=100, aliquota=5.00),
                 item_lista_servico="106",
                 codigo_cnae=6204000,
                 codigo_tributacao_municipio="620400000",
@@ -248,7 +248,7 @@ class TestCenarioEnvioLoteCompleto:
             iss_retido=1,
             valor_iss_retido=475,
             outras_retencoes=50,
-            aliquota=0.05,
+            aliquota=5.00,
         )
         assert v.base_calculo == 9500.0
         assert v.valor_iss == 475.0
@@ -256,8 +256,8 @@ class TestCenarioEnvioLoteCompleto:
 
     def test_ibscbs_envio_lote(self):
         """
-        Cenário envio_lote.xml: base 9500, IBSUF 9.5%, IBSMun 3.5%, CBS 8.8%
-        IBSUFValor=902.50, IBSMunValor=332.50, CBSValor=836, IBSValorTotal=1235
+        Cenário envio_lote.xml: base 9500. Alíquotas tsValor (2 casas): entradas
+        0.095/0.035/0.088 arredondam para 0.10/0.04/0.09 antes do cálculo.
         """
         ibs = IBSCBS(
             ibscbs_base_calculo=Decimal("9500"),
@@ -265,13 +265,13 @@ class TestCenarioEnvioLoteCompleto:
             ib_mun_aliquota=Decimal("0.035"),
             cbs_aliquota=Decimal("0.088"),
         )
-        assert ibs.ibsu_f_valor == Decimal("902.50")
-        assert ibs.ibs_mun_valor == Decimal("332.50")
-        assert ibs.cbs_valor == Decimal("836.00")
-        assert ibs.ibs_valor_total == Decimal("1235.00")
+        assert ibs.ibsu_f_valor == Decimal("950.00")
+        assert ibs.ibs_mun_valor == Decimal("380.00")
+        assert ibs.cbs_valor == Decimal("855.00")
+        assert ibs.ibs_valor_total == Decimal("1330.00")
 
     def test_valor_total_com_tributos_envio_lote(self):
-        """ValorTotalComTributos = 10000 + 1235 + 836 = 12071."""
+        """ValorTotalComTributos = 10000 + 1330 + 855 (alíquotas após tsValor)."""
         inf = InfRps(
             identificacao_rps=IdentificacaoRps(numero=100, serie="A1", tipo=1),
             data_emissao=datetime(2025, 12, 5, 10, 30),
@@ -289,7 +289,7 @@ class TestCenarioEnvioLoteCompleto:
                     iss_retido=1,
                     valor_iss_retido=475,
                     outras_retencoes=50,
-                    aliquota=0.05,
+                    aliquota=5.00,
                 ),
                 item_lista_servico="01.01",
                 codigo_cnae=6201501,
@@ -318,7 +318,7 @@ class TestCenarioEnvioLoteCompleto:
                 cbs_aliquota=Decimal("0.088"),
             ),
         )
-        assert inf.ibscbs.valor_total_com_tributos == Decimal("12071.00")
+        assert inf.ibscbs.valor_total_com_tributos == Decimal("12185.00")
 
 
 # --- Testes de arredondamento ---
@@ -331,7 +331,7 @@ class TestArredondamento:
 
     def test_arredondamento_valor_iss(self):
         """ValorIss: 100 * 0.055 = 5.50."""
-        assert calc_valor_iss(100, 0.055) == Decimal("5.50")
+        assert calc_valor_iss(100, 5.50) == Decimal("5.50")
 
     def test_arredondamento_pis_cofins(self):
         """PIS/COFINS com resultado .xx5 arredonda para cima."""
@@ -395,7 +395,7 @@ class TestEdgeCases:
         """Quando base_calculo_pis_cofins=0, usa base_calculo."""
         v = Valores(
             valor_servicos=9500,
-            aliquota=0.05,
+            aliquota=5.00,
             base_calculo_pis_cofins=0,
             aliq_pis=0.0068,
             aliq_cofins=0.0316,
@@ -453,7 +453,7 @@ class TestXmlValoresCalculados:
                 regime_especial_tributacao=1,
                 optante_simples_nacional=2,
                 servico=DadosServico(
-                    valores=Valores(valor_servicos=100, aliquota=0.05),
+                    valores=Valores(valor_servicos=100, aliquota=5.00),
                     item_lista_servico="106",
                     codigo_cnae=6204000,
                     codigo_tributacao_municipio="620400000",

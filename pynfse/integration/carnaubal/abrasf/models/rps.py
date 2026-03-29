@@ -1,6 +1,8 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional, List, Annotated
-from pydantic import Field, StringConstraints
+from pydantic import Field, StringConstraints, model_validator
+from pynfse.common.coerced_decimal import CoercedDecimal
 from pynfse.integration.carnaubal.abrasf.models.base import (
     ABRASFNode, ABRASFTypesNode, CpfCnpj, Endereco, Contato,
     tsNumero, tsSerieRps, tsTipoRps, tsInscricaoMunicipal,
@@ -170,52 +172,48 @@ class ControleIBSCBS(ABRASFTypesNode):
     c_ind_op: Optional[Annotated[str, StringConstraints(max_length=6)]] = Field(None, alias="CIndOp")
     x_tp_ente_gov: Optional[Annotated[str, StringConstraints(max_length=2000)]] = Field(None, alias="XTpEnteGov")
 
-from typing import Optional, Annotated
-from pydantic import Field, model_validator
-from decimal import Decimal
-
 
 class IBSCBS(ABRASFTypesNode):
-    ibscbs_base_calculo: Optional[Decimal] = Field(None, alias="IBSCBSBaseCalculo")
+    ibscbs_base_calculo: Optional[CoercedDecimal] = Field(None, alias="IBSCBSBaseCalculo")
 
-    ibsu_f_aliquota: Optional[Decimal] = Field(None, alias="IBSUFAliquota")
-    ib_mun_aliquota: Optional[Decimal] = Field(None, alias="IBSMunAliquota")
-    cbs_aliquota: Optional[Decimal] = Field(None, alias="CBSAliquota")
+    ibsu_f_aliquota: Optional[CoercedDecimal] = Field(None, alias="IBSUFAliquota")
+    ib_mun_aliquota: Optional[CoercedDecimal] = Field(None, alias="IBSMunAliquota")
+    cbs_aliquota: Optional[CoercedDecimal] = Field(None, alias="CBSAliquota")
 
-    ibsu_f_valor: Optional[Decimal] = Field(None, alias="IBSUFValor")
-    ibs_mun_valor: Optional[Decimal] = Field(None, alias="IBSMunValor")
-    cbs_valor: Optional[Decimal] = Field(None, alias="CBSValor")
+    ibsu_f_valor: Optional[CoercedDecimal] = Field(None, alias="IBSUFValor")
+    ibs_mun_valor: Optional[CoercedDecimal] = Field(None, alias="IBSMunValor")
+    cbs_valor: Optional[CoercedDecimal] = Field(None, alias="CBSValor")
 
-    ibsu_f_perc_reducao: Optional[Decimal] = Field(None, alias="IBSUFPercReducao")
-    ibs_mun_perc_reducao: Optional[Decimal] = Field(None, alias="IBSMunPercReducao")
-    cbs_perc_reducao: Optional[Decimal] = Field(None, alias="CBSPercReducao")
+    ibsu_f_perc_reducao: Optional[CoercedDecimal] = Field(None, alias="IBSUFPercReducao")
+    ibs_mun_perc_reducao: Optional[CoercedDecimal] = Field(None, alias="IBSMunPercReducao")
+    cbs_perc_reducao: Optional[CoercedDecimal] = Field(None, alias="CBSPercReducao")
 
-    ibsu_f_aliquota_efetiva: Optional[Decimal] = Field(None, alias="IBSUFAliquotaEfetiva")
-    ibs_mun_aliquota_efetiva: Optional[Decimal] = Field(None, alias="IBSMunAliquotaEfetiva")
-    cbs_aliquota_efetiva: Optional[Decimal] = Field(None, alias="CBSAliquotaEfetiva")
+    ibsu_f_aliquota_efetiva: Optional[CoercedDecimal] = Field(None, alias="IBSUFAliquotaEfetiva")
+    ibs_mun_aliquota_efetiva: Optional[CoercedDecimal] = Field(None, alias="IBSMunAliquotaEfetiva")
+    cbs_aliquota_efetiva: Optional[CoercedDecimal] = Field(None, alias="CBSAliquotaEfetiva")
 
-    ibsu_f_perc_diferimento: Optional[Decimal] = Field(None, alias="IBSUFPercDiferimento")
-    ibs_mun_perc_diferimento: Optional[Decimal] = Field(None, alias="IBSMunPercDiferimento")
-    cbs_perc_diferimento: Optional[Decimal] = Field(None, alias="CBSPercDiferimento")
+    ibsu_f_perc_diferimento: Optional[CoercedDecimal] = Field(None, alias="IBSUFPercDiferimento")
+    ibs_mun_perc_diferimento: Optional[CoercedDecimal] = Field(None, alias="IBSMunPercDiferimento")
+    cbs_perc_diferimento: Optional[CoercedDecimal] = Field(None, alias="CBSPercDiferimento")
 
-    ibsu_f_valor_diferido: Optional[Decimal] = Field(None, alias="IBSUFValorDiferido")
-    ibs_mun_valor_diferido: Optional[Decimal] = Field(None, alias="IBSMunValorDiferido")
-    cbs_valor_diferido: Optional[Decimal] = Field(None, alias="CBSValorDiferido")
+    ibsu_f_valor_diferido: Optional[CoercedDecimal] = Field(None, alias="IBSUFValorDiferido")
+    ibs_mun_valor_diferido: Optional[CoercedDecimal] = Field(None, alias="IBSMunValorDiferido")
+    cbs_valor_diferido: Optional[CoercedDecimal] = Field(None, alias="CBSValorDiferido")
 
-    ibs_credito_presumido_aliq: Optional[Decimal] = Field(None, alias="IBSCreditoPresumidoAliq")
-    ibs_credito_presumido_valor: Optional[Decimal] = Field(None, alias="IBSCreditoPresumidoValor")
-    cbs_credito_presumido_aliq: Optional[Decimal] = Field(None, alias="CBSCreditoPresumidoAliq")
-    cbs_credito_presumido_valor: Optional[Decimal] = Field(None, alias="CBSCreditoPresumidoValor")
+    ibs_credito_presumido_aliq: Optional[CoercedDecimal] = Field(None, alias="IBSCreditoPresumidoAliq")
+    ibs_credito_presumido_valor: Optional[CoercedDecimal] = Field(None, alias="IBSCreditoPresumidoValor")
+    cbs_credito_presumido_aliq: Optional[CoercedDecimal] = Field(None, alias="CBSCreditoPresumidoAliq")
+    cbs_credito_presumido_valor: Optional[CoercedDecimal] = Field(None, alias="CBSCreditoPresumidoValor")
 
-    ibs_valor_total: Optional[Decimal] = Field(None, alias="IBSValorTotal")
-    valor_total_com_tributos: Optional[Decimal] = Field(None, alias="ValorTotalComTributos")
+    ibs_valor_total: Optional[CoercedDecimal] = Field(None, alias="IBSValorTotal")
+    valor_total_com_tributos: Optional[CoercedDecimal] = Field(None, alias="ValorTotalComTributos")
 
-    ibs_valor_reembolso: Optional[Decimal] = Field(None, alias="IBSValorReembolso")
+    ibs_valor_reembolso: Optional[CoercedDecimal] = Field(None, alias="IBSValorReembolso")
 
     localidade_incidencia_cod: Optional[str] = Field(None, alias="LocalidadeIncidenciaCod")
     localidade_incidencia_nome: Optional[Annotated[str, ...]] = Field(None, alias="LocalidadeIncidenciaNome")
 
-    perc_redutor_compra_gov: Optional[Decimal] = Field(None, alias="PercRedutorCompraGov")
+    perc_redutor_compra_gov: Optional[CoercedDecimal] = Field(None, alias="PercRedutorCompraGov")
 
     @model_validator(mode="after")
     def calcular_campos(self):

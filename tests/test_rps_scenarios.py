@@ -176,7 +176,7 @@ def test_rps_comercio_exterior_e_ibscbs():
     assert "<CPaisResult>USA</CPaisResult>" in xml
     assert "<IBSCBS>" in xml
     assert "<IBSUFAliquota>0.02</IBSUFAliquota>" in xml
-    assert "<IBSValorTotal>250.0</IBSValorTotal>" in xml
+    assert "<IBSValorTotal>250.00</IBSValorTotal>" in xml
 
 from pynfse.common.signature import (
     Signature, SignedInfo, CanonicalizationMethod, SignatureMethod, 
