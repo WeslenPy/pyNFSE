@@ -186,12 +186,12 @@ class TipoExigibilidadeSuspensa(IntEnum):
 
 
 class FinalidadeNFSe(IntEnum):
-    """Finalidade da NFSe (ControleIBSCBS.fin_nfse)."""
-
-    NFSE_NORMAL = 1
-    NFSE_COMPLEMENTAR = 2
-    NFSE_DE_AJUSTE = 3
-    NFSE_SUBSTITUIDA = 4
+    """Finalidade da NFSe (ControleIBSCBS.fin_nfse).
+        Indicador da finalidade da emissão de NFS-e:
+        0 - NFS-e regular;
+    """
+    
+    NFSE_REGULAR = 0
 
 
 class IndicadorFinal(IntEnum):
