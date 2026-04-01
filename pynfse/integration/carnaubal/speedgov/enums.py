@@ -61,6 +61,42 @@ class IssRetido(IntEnum):
 
     SIM = 1
     NAO = 2
+    
+    
+class TipoOperacao(IntEnum):
+    """Tipo de operação (ControleIBSCBS.tp_oper)."""
+    
+    """        Tipo de Operação com Entes Governamentais ou outros serviços sobre bens imóveis:
+        1 – Fornecimento com pagamento posterior;
+        2 - Recebimento do pagamento com fornecimento já realizado;
+        3 – Fornecimento com pagamento já realizado;
+        4 – Recebimento do pagamento com fornecimento posterior;
+        5 – Fornecimento e recebimento do pagamento concomitantes;"""
+        
+    FORNECIMENTO_COM_PAGAMENTO_POSTERIOR = 1 # 1 – Fornecimento com pagamento posterior;
+    RECEBIMENTO_DO_PAGAMENTO_COM_FORNECIMENTO_JA_REALIZADO = 2 # 2 - Recebimento do pagamento com fornecimento já realizado;
+    FORNECIMENTO_COM_PAGAMENTO_JA_REALIZADO = 3 # 3 – Fornecimento com pagamento já realizado;
+    RECEBIMENTO_DO_PAGAMENTO_COM_FORNECIMENTO_POSTERIOR = 4 # 4 – Recebimento do pagamento com fornecimento posterior;
+    FORNECIMENTO_E_RECEBIMENTO_DO_PAGAMENTO_CONCOMITANTES = 5 # 5 – Fornecimento e recebimento do pagamento concomitantes;
+
+
+class TipoEnteGovernamental(IntEnum):
+    """Tipo de ente governamental (ControleIBSCBS.tp_ente_gov)."""
+    
+    """       
+    Tipo de ente governamental
+        Para administração pública direta e suas autarquias e fundações:
+        1 - União;
+        2 - Estado;
+        3 - Distrito Federal;
+        4 - Município;
+    """
+    UNIAO = 1
+    ESTADO = 2
+    DF = 3
+    MUNICIPIO = 4
+    NAO_INFORMADO = 0
+
 
 
 # --- Situação do Lote (resposta ConsultarSituacaoLoteRps) ---
@@ -162,12 +198,15 @@ class IndicadorFinal(IntEnum):
     """Indicador de operação para consumidor final (ControleIBSCBS.ind_final)."""
 
     CONSUMIDOR_FINAL = 1
-    NAO_CONSUMIDOR_FINAL = 2
+    NAO_CONSUMIDOR_FINAL = 0
 
 
 class IndicadorDestino(IntEnum):
     """Indicador de destino da operação (ControleIBSCBS.ind_dest)."""
-
-    INTERNA = 1
-    INTERESTADUAL = 2
-    EXTERIOR = 3
+    """        
+        0 – o destinatário é o próprio tomador/adquirente identificado na NFS-e (tomador = adquirente = destinatário);
+        1 – o destinatário não é o próprio adquirente, podendo ser outra pessoa, física ou jurídica (ou equiparada), ou um estabelecimento diferente do indicado como tomador (tomador = adquirente ≠ destinatário);
+    """
+        
+    PROPRIO_TOMADOR = 0
+    NAO_PROPRIO_TOMADOR = 1

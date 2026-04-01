@@ -157,7 +157,9 @@ class ControleIBSCBS(SpeedGovNode):
     ind_dest: Optional[int] = Field(None, alias="IndDest", description="Use IndicadorDestino")
     c_ind_op: Optional[str] = Field(None, alias="CIndOp", max_length=6)# código do indicador de operação
     x_tp_ente_gov: Optional[str] = Field(None, alias="XTpEnteGov", max_length=2000)# descrição do tipo de ente governamental
-
+   
+    cst: Optional[str] = Field(None, alias="CST", max_length=3)# código de situação tributária
+    c_class_trib: Optional[str] = Field(None, alias="cClassTrib", max_length=6)# código de classificação tributária
 
 class IBSCBS(SpeedGovNode):
     """IBS/CBS - NFS-e Nacional."""
@@ -396,8 +398,14 @@ class InfRps(SpeedGovNode):
     exigibilidade_suspensa: Optional[ExigibilidadeSuspensa] = Field(None, alias="ExigibilidadeSuspensa", json_schema_extra={"xml_emit_if_any": True})
     beneficio_municipal: Optional[BeneficioMunicipal] = Field(None, alias="BeneficioMunicipal", json_schema_extra={"xml_emit_if_any": True})
     reembolso_repasse: Optional[ReembolsoRepasse] = Field(None, alias="ReembolsoRepasse", json_schema_extra={"xml_emit_if_any": True})
+   
+   
     destinatario: Optional[Destinatario] = Field(None, alias="Destinatario", json_schema_extra={"xml_emit_if_any": True})
+   
+   
     controle_ibscbs: Optional[ControleIBSCBS] = Field(None, alias="ControleIBSCBS", json_schema_extra={"xml_emit_if_any": True})
+ 
+ 
     ibscbs: Optional[IBSCBS] = Field(None, alias="IBSCBS", json_schema_extra={"xml_emit_if_any": True})
     data_competencia: Optional[date] = Field(None, alias="DataCompetencia")
 
