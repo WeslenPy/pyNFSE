@@ -1,8 +1,6 @@
 """Fixtures compartilhadas para os testes."""
 import pytest
-from datetime import datetime, date
-from unittest.mock import Mock, MagicMock
-from requests import Response
+from datetime import datetime
 
 from pynfse.integration.carnaubal.abrasf.models.rps import (
     InfRps as InfoRPS,
@@ -193,28 +191,4 @@ def sample_consult_lote_rps(sample_identification_nfse, sample_provider_nfse):
         prestador=sample_provider_nfse
     )
 
-
-@pytest.fixture
-def mock_response():
-    """Fixture para mock de Response do requests."""
-    response = Mock(spec=Response)
-    response.status_code = 200
-    response.text = "<xml>response</xml>"
-    response.json.return_value = {"status": "ok"}
-    response.headers = {"Content-Type": "application/json"}
-    response.content = b"test content"
-    return response
-
-
-@pytest.fixture
-def mock_session():
-    """Fixture para mock de Session do requests."""
-    session = MagicMock()
-    response = Mock(spec=Response)
-    response.status_code = 200
-    response.text = "<xml>response</xml>"
-    response.json.return_value = {"status": "ok"}
-    response.headers = {"Content-Type": "application/json"}
-    session.post.return_value = response
-    return session
 

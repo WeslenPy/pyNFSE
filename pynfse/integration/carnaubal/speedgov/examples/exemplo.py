@@ -2,6 +2,7 @@
 Exemplo completo da integração SpeedGov com assinatura digital.
 Baseado em speedgov.py: carrega certificado, gera XML assinado, valida e envia.
 """
+import asyncio
 from decimal import Decimal
 import os
 from datetime import datetime
@@ -124,7 +125,7 @@ def criar_rps_exemplo(cnpj_lote: str, inscricao_municipal: str) -> Rps:
     )
 
 
-def main():
+async def main():
     """Fluxo completo: certificado → XML assinado → validação → envio."""
     URL_HOMOLOGACAO = "http://speedgov.com.br:80/wsmod/Nfes?wsdl"
     CERT_PATH = "teste.pfx"
@@ -133,46 +134,42 @@ def main():
     cnpj_lote = "57255426000103"
     inscricao_municipal = "1"
 
-    provider = SpeedGovNFSe(URL=URL_HOMOLOGACAO)
-    rps = criar_rps_exemplo(cnpj_lote,inscricao_municipal)
-    
-    print(rps)
+    async with SpeedGovNFSe(URL=URL_HOMOLOGACAO) as provider:
+        rps = criar_rps_exemplo(cnpj_lote, inscricao_municipal)
 
-    # Carrega certificado (se existir) para assinatura
-    cert_data = None
-    if os.path.exists(CERT_PATH):
-        try:
-            cert_data = provider.get_certificate(CERT_PATH)
-            logger.info("Certificado carregado")
-        except Exception as e:
-            logger.warning(f"Erro ao carregar certificado: {e}")
+        print(rps)
 
-    # Gera XML (com ou sem assinatura)
-    xml_lote = provider.create_rps_nfse(
-        rps_list=[rps],
-        numero_lote=1,
-        cnpj=cnpj_lote,
-        inscricao_municipal=inscricao_municipal,
-        lote_id="lote_001",
-        certificate_data=cert_data,
-        certificate_password=CERT_PASSWORD if cert_data else None,
-    )
+        cert_data = None
+        if os.path.exists(CERT_PATH):
+            try:
+                cert_data = await provider.get_certificate(CERT_PATH)
+                logger.info("Certificado carregado")
+            except Exception as e:
+                logger.warning(f"Erro ao carregar certificado: {e}")
 
-    logger.success("XML gerado com sucesso")
-    print("-" * 60)
-    print(xml_lote)
-    print("-" * 60)
+        xml_lote = provider.create_rps_nfse(
+            rps_list=[rps],
+            numero_lote=1,
+            cnpj=cnpj_lote,
+            inscricao_municipal=inscricao_municipal,
+            lote_id="lote_001",
+            certificate_data=cert_data,
+            certificate_password=CERT_PASSWORD if cert_data else None,
+        )
 
+        logger.success("XML gerado com sucesso")
+        print("-" * 60)
+        print(xml_lote)
+        print("-" * 60)
 
-    # Envio ao Web Service
-    if cert_data:
-        logger.info("Enviando para o Web Service...")
-        result = provider.send(xml_lote)
-        logger.info(f"Status: {result.response.status_code}")
-        print("RESPOSTA:", (result.response.text[:500] if result.response.text else "-"))
-    else:
-        logger.info("Certificado não encontrado - XML gerado localmente (sem envio)")
+        if cert_data:
+            logger.info("Enviando para o Web Service...")
+            result = await provider.send(xml_lote)
+            logger.info(f"Status: {result.response.status_code}")
+            print("RESPOSTA:", (result.response.text[:500] if result.response.text else "-"))
+        else:
+            logger.info("Certificado não encontrado - XML gerado localmente (sem envio)")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

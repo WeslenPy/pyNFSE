@@ -9,7 +9,6 @@ readme = "README.md"
 requires-python = ">=3.11,<4"
 dependencies = [
     "beautifulsoup4 (>=4.14.3,<5.0.0)",
-    "requests (>=2.32.5,<3.0.0)",
     "pydantic (>=2.12.5,<3.0.0)",
     "loguru (>=0.7.3,<0.8.0)",
     "lxml (>=6.0.2,<7.0.0)",
@@ -26,7 +25,8 @@ build-backend = "poetry.core.masonry.api"
 
 [dependency-groups]
 dev = [
-    "pytest (>=9.0.2,<10.0.0)"
+    "pytest (>=9.0.2,<10.0.0)",
+    "pytest-asyncio (>=1.0.0,<2.0.0)"
 ]
 
 [tool.pytest.ini_options]
@@ -39,3 +39,5 @@ addopts = [
     "--strict-markers",
     "--tb=short"
 ]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

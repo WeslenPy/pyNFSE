@@ -1,6 +1,4 @@
-
-
-from requests import Response
+from httpx import Response
 
 
 class ResponseNFSE:

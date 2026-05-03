@@ -1,18 +1,13 @@
-from abc import abstractmethod
-from pathlib import Path
+import asyncio
 from urllib.parse import urlparse
-from typing import Any, Dict, Optional, Type, TypeVar
-import requests
+from typing import Any, Dict
+
+import httpx
 import xmltodict
-from pydantic import BaseModel
 
 from pynfse.common.response import ResponseNFSE
 from pynfse.common.xml import XMLBase
 from loguru import logger
-
-from bs4 import BeautifulSoup
-
-T = TypeVar("T", bound=BaseModel)
 
 class NFSeBase:
     def __init__(self, URL: str, **kwargs):
@@ -21,11 +16,30 @@ class NFSeBase:
 
         self.headers = {'Content-Type': 'text/xml; charset=utf-8'}
 
-        self.session = requests.Session()
+        self._http_client: httpx.AsyncClient | None = None
+        self._http_lock = asyncio.Lock()
 
-        self.session.url = self.URL
-        self.session.headers = self.headers
-        self.session.verify = False
+    async def _get_http_client(self) -> httpx.AsyncClient:
+        async with self._http_lock:
+            if self._http_client is None:
+                self._http_client = httpx.AsyncClient(
+                    headers=self.headers,
+                    verify=False,
+                    timeout=30.0,
+                )
+            return self._http_client
+
+    async def aclose(self) -> None:
+        async with self._http_lock:
+            if self._http_client is not None:
+                await self._http_client.aclose()
+                self._http_client = None
+
+    async def __aenter__(self) -> "NFSeBase":
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.aclose()
 
     def get_xml_base(self)->XMLBase:
         return XMLBase()
@@ -51,12 +65,11 @@ class NFSeBase:
 
 
 
-    def send(self, xml: str)->ResponseNFSE:
+    async def send(self, xml: str) -> ResponseNFSE:
         """Send the RPS to the NFSe"""
-        
-        response = self.session.post(url= self.URL,  data=xml)
-
-        return ResponseNFSE(xml,response)
+        client = await self._get_http_client()
+        response = await client.post(self.URL, content=xml)
+        return ResponseNFSE(xml, response)
 
     def parse_response(self, response_text: str) -> Dict[str, Any]:
         """
@@ -115,10 +128,10 @@ class NFSeBase:
         return final_content
 
 
-    def send_nfse(self,lote):
+    async def send_nfse(self, lote):
         self.xml = self.get_xml_base()
         xml_data = self.xml.create_rps_nfse(lote=lote)
-        return self.send(xml_data)
+        return await self.send(xml_data)
 
 
     def get_url_pdf(self, identification_number: str,nfse_id: int)->str:
@@ -129,11 +142,11 @@ class NFSeBase:
         return f"{schema}://{domain}/satcar/servlet//com.satweb.imprimenota?{identification_number}NF{nfse_id}"
 
 
-    def get_pdf(self, identification_number: str,nfse_id: int)->bytes:
-        url = self.get_url_pdf(identification_number,nfse_id)
-
-        response = requests.get(url=url)
-        if 'application/pdf' in response.headers.get("Content-Type",'not'):
+    async def get_pdf(self, identification_number: str, nfse_id: int) -> bytes | bool:
+        url = self.get_url_pdf(identification_number, nfse_id)
+        client = await self._get_http_client()
+        response = await client.get(url)
+        if 'application/pdf' in response.headers.get("Content-Type", 'not'):
             return response.content
 
         return False

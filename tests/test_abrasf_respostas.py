@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 from datetime import datetime, date
 from pynfse.integration.carnaubal.abrasf.models.respostas import (
@@ -10,7 +11,9 @@ from pynfse.integration.carnaubal.abrasf.nfse import CarnaubalNFSe
 
 @pytest.fixture
 def carnaubal_provider():
-    return CarnaubalNFSe(URL="http://test.com")
+    p = CarnaubalNFSe(URL="http://test.com")
+    yield p
+    asyncio.run(p.aclose())
 
 def test_enviar_lote_rps_resposta_sucesso():
     """Testa resposta de sucesso no envio de lote."""

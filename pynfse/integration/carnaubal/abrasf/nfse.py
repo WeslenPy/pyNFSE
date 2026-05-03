@@ -1,8 +1,8 @@
-from datetime import datetime
-from typing import Optional, List, Union, Dict, Any
+import asyncio
 import base64
-import requests
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 from lxml import etree
@@ -87,7 +87,7 @@ class CarnaubalNFSe(NFSeBase):
         self._cert_cache: Dict[str, bytes] = {}
         self._xml_cache: Dict[str, bytes] = {}
 
-    def get_certificate(self, path_or_url: str, use_cache: bool = True) -> bytes:
+    async def get_certificate(self, path_or_url: str, use_cache: bool = True) -> bytes:
         """
         Obtém o conteúdo do certificado de uma URL ou caminho local.
         Se for uma URL, faz o download. Se for um caminho, lê do disco.
@@ -104,7 +104,8 @@ class CarnaubalNFSe(NFSeBase):
         try:
             if is_url:
                 logger.debug(f"Baixando certificado da URL: {path_or_url}")
-                response = requests.get(path_or_url, verify=False, timeout=30)
+                client = await self._get_http_client()
+                response = await client.get(path_or_url)
                 response.raise_for_status()
                 content = response.content
             else:
@@ -112,11 +113,11 @@ class CarnaubalNFSe(NFSeBase):
                 path = Path(path_or_url)
                 if not path.is_file():
                     raise FileNotFoundError(f"Arquivo de certificado não encontrado: {path_or_url}")
-                content = path.read_bytes()
+                content = await asyncio.to_thread(path.read_bytes)
 
             if use_cache:
                 self._cert_cache[path_or_url] = content
-            
+
             return content
 
         except Exception as e:
@@ -513,7 +514,7 @@ class CarnaubalNFSe(NFSeBase):
             header_content=self._get_default_header(),
         )
 
-    def get_xml_from_url(self, url: str, use_cache: bool = True) -> bytes:
+    async def get_xml_from_url(self, url: str, use_cache: bool = True) -> bytes:
         """
         Baixa o conteúdo XML de uma URL e armazena em um dicionário de cache.
         """
@@ -523,13 +524,14 @@ class CarnaubalNFSe(NFSeBase):
 
         try:
             logger.debug(f"Baixando XML da URL: {url}")
-            response = requests.get(url, verify=False, timeout=30)
+            client = await self._get_http_client()
+            response = await client.get(url)
             response.raise_for_status()
-            
+
             content = response.content
             if use_cache:
                 self._xml_cache[url] = content
-                
+
             return content
         except Exception as e:
             logger.error(f"Erro ao baixar XML da URL {url}: {str(e)}")

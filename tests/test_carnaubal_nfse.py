@@ -1,6 +1,8 @@
+import asyncio
 import pytest
+import httpx
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from lxml import etree
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -58,7 +60,9 @@ def mock_certificate():
 
 @pytest.fixture
 def carnaubal_provider():
-    return CarnaubalNFSe(URL="http://test.com")
+    p = CarnaubalNFSe(URL="http://test.com")
+    yield p
+    asyncio.run(p.aclose())
 
 
 def _parse_xml(xml: str) -> etree._Element:
@@ -248,56 +252,50 @@ def test_create_consult_situacao_lote_rps_xml(carnaubal_provider):
     assert "ConsultarSituacaoLoteRps" in xml
     assert _text(params_xml, "Protocolo") == "PROTOCOLO123"
 
-def test_get_certificate_local(carnaubal_provider, tmp_path):
+async def test_get_certificate_local(carnaubal_provider, tmp_path):
     """Testa o carregamento de certificado de arquivo local."""
     cert_file = tmp_path / "cert.pem"
     cert_content = b"fake-certificate-content"
     cert_file.write_bytes(cert_content)
-    
-    # Primeira leitura (disco)
-    content = carnaubal_provider.get_certificate(str(cert_file))
+
+    content = await carnaubal_provider.get_certificate(str(cert_file))
     assert content == cert_content
     assert str(cert_file) in carnaubal_provider._cert_cache
-    
-    # Segunda leitura (cache)
-    content_cached = carnaubal_provider.get_certificate(str(cert_file))
+
+    content_cached = await carnaubal_provider.get_certificate(str(cert_file))
     assert content_cached == cert_content
 
-def test_get_certificate_url(carnaubal_provider):
+
+async def test_get_certificate_url(carnaubal_provider):
     """Testa o download de certificado de uma URL."""
     url = "https://example.com/cert.pfx"
     cert_content = b"downloaded-cert-content"
-    
-    with patch("requests.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.content = cert_content
-        mock_response.status_code = 200
-        mock_get.return_value = mock_response
-        
-        # Download
-        content = carnaubal_provider.get_certificate(url)
+    req = httpx.Request("GET", url)
+
+    with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = httpx.Response(200, content=cert_content, request=req)
+
+        content = await carnaubal_provider.get_certificate(url)
         assert content == cert_content
-        mock_get.assert_called_once_with(url, verify=False, timeout=30)
+        mock_get.assert_called_once()
+        assert mock_get.call_args[0][0] == url
         assert url in carnaubal_provider._cert_cache
 
-def test_get_xml_from_url_with_cache(carnaubal_provider):
+
+async def test_get_xml_from_url_with_cache(carnaubal_provider):
     """Testa o download de XML de uma URL com cache."""
     url = "http://mock-url.com/nfse.xml"
     mock_content = b"<xml>conteudo</xml>"
-    
-    with patch("requests.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.content = mock_content
-        mock_response.status_code = 200
-        mock_get.return_value = mock_response
-        
-        # Primeira chamada (deve baixar)
-        content1 = carnaubal_provider.get_xml_from_url(url)
+    req = httpx.Request("GET", url)
+
+    with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = httpx.Response(200, content=mock_content, request=req)
+
+        content1 = await carnaubal_provider.get_xml_from_url(url)
         assert content1 == mock_content
         assert mock_get.call_count == 1
-        
-        # Segunda chamada (deve vir do cache)
-        content2 = carnaubal_provider.get_xml_from_url(url)
+
+        content2 = await carnaubal_provider.get_xml_from_url(url)
         assert content2 == mock_content
         assert mock_get.call_count == 1
         assert url in carnaubal_provider._xml_cache

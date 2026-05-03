@@ -2,12 +2,12 @@
 Integração SpeedGov para NFS-e.
 Segue a estrutura exata do enviar_lote_rps.xml: prefixos p:/p1:, RPS simplificado.
 """
+import asyncio
 from pathlib import Path
 from typing import Dict, List, Optional, Type, TypeVar
 from urllib.parse import urlparse
 
 from loguru import logger
-import requests
 from lxml import etree
 from pydantic import BaseModel
 
@@ -101,7 +101,7 @@ class SpeedGovNFSe(NFSeBase):
         super().__init__(URL=URL, **kwargs)
         self._cert_cache: Dict[str, bytes] = {}
 
-    def get_certificate(self, path_or_url: str, use_cache: bool = True) -> bytes:
+    async def get_certificate(self, path_or_url: str, use_cache: bool = True) -> bytes:
         """Obtém o conteúdo do certificado de uma URL ou caminho local."""
         if use_cache and path_or_url in self._cert_cache:
             return self._cert_cache[path_or_url]
@@ -109,14 +109,15 @@ class SpeedGovNFSe(NFSeBase):
         is_url = parsed.scheme in ("http", "https")
         try:
             if is_url:
-                response = requests.get(path_or_url, verify=False, timeout=30)
+                client = await self._get_http_client()
+                response = await client.get(path_or_url)
                 response.raise_for_status()
                 content = response.content
             else:
                 path = Path(path_or_url)
                 if not path.is_file():
                     raise FileNotFoundError(f"Certificado não encontrado: {path_or_url}")
-                content = path.read_bytes()
+                content = await asyncio.to_thread(path.read_bytes)
             if use_cache:
                 self._cert_cache[path_or_url] = content
             return content
